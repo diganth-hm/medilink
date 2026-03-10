@@ -1,0 +1,21 @@
+************* Module main
+backend\main.py:81:0: C0301: Line too long (150/100) (line-too-long)
+backend\main.py:82:0: C0301: Line too long (105/100) (line-too-long)
+backend\main.py:84:0: C0301: Line too long (116/100) (line-too-long)
+backend\main.py:119:0: C0301: Line too long (150/100) (line-too-long)
+backend\main.py:120:0: C0301: Line too long (135/100) (line-too-long)
+backend\main.py:122:0: C0301: Line too long (150/100) (line-too-long)
+backend\main.py:123:0: C0301: Line too long (137/100) (line-too-long)
+backend\main.py:158:19: C0303: Trailing whitespace (trailing-whitespace)
+backend\main.py:1:0: C0114: Missing module docstring (missing-module-docstring)
+backend\main.py:48:0: C0116: Missing function or method docstring (missing-function-docstring)
+backend\main.py:53:0: C0116: Missing function or method docstring (missing-function-docstring)
+backend\main.py:147:11: W0718: Catching too general exception Exception (broad-exception-caught)
+backend\main.py:6:0: C0411: standard import "os" should be placed before third party imports "fastapi.FastAPI", "fastapi.middleware.cors.CORSMiddleware", "fastapi.staticfiles.StaticFiles", "database.engine", "models" (wrong-import-order)
+backend\main.py:9:0: C0411: standard import "uuid" should be placed before third party imports "fastapi.FastAPI", "fastapi.middleware.cors.CORSMiddleware", "fastapi.staticfiles.StaticFiles" (...) "models", "routers.auth", "auth.hash_password" (wrong-import-order)
+backend\main.py:10:0: C0411: standard import "datetime.datetime" should be placed before third party imports "fastapi.FastAPI", "fastapi.middleware.cors.CORSMiddleware", "fastapi.staticfiles.StaticFiles" (...) "models", "routers.auth", "auth.hash_password" (wrong-import-order)
+backend\main.py:10:0: W0611: Unused datetime imported from datetime (unused-import)
+
+------------------------------------------------------------------
+Your code has been rated at 7.38/10 (previous run: 7.38/10, +0.00)
+

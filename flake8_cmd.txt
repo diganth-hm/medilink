@@ -1,0 +1,14 @@
+backend/main.py:10:1: F401 'datetime.datetime' imported but unused
+backend/main.py:62:80: E501 line too long (97 > 79 characters)
+backend/main.py:80:80: E501 line too long (91 > 79 characters)
+backend/main.py:81:80: E501 line too long (150 > 79 characters)
+backend/main.py:82:80: E501 line too long (105 > 79 characters)
+backend/main.py:83:80: E501 line too long (95 > 79 characters)
+backend/main.py:84:80: E501 line too long (116 > 79 characters)
+backend/main.py:119:80: E501 line too long (150 > 79 characters)
+backend/main.py:120:80: E501 line too long (135 > 79 characters)
+backend/main.py:122:80: E501 line too long (150 > 79 characters)
+backend/main.py:123:80: E501 line too long (137 > 79 characters)
+backend/main.py:144:80: E501 line too long (81 > 79 characters)
+backend/main.py:145:80: E501 line too long (83 > 79 characters)
+backend/main.py:158:20: W291 trailing whitespace

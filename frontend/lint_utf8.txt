@@ -1,0 +1,33 @@
+﻿
+C:\Users\digan\Desktop\medilink\frontend\src\context\AuthContext.jsx
+  15:7   error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  13 |     const savedUser = localStorage.getItem('medilink_user')
+  14 |     if (savedToken && savedUser) {
+> 15 |       setToken(savedToken)
+     |       ^^^^^^^^ Avoid calling setState() directly within an effect
+  16 |       setUser(JSON.parse(savedUser))
+  17 |       axios.defaults.headers.common['Authorization'] = `Bearer ${savedToken}`
+  18 |     }  react-hooks/set-state-in-effect
+  45:17  error  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            react-refresh/only-export-components
+
+C:\Users\digan\Desktop\medilink\frontend\src\pages\MedicalRecords.jsx
+  26:11  error  'token' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+  41:14  error  'err' is defined but never used                                                        no-unused-vars
+
+C:\Users\digan\Desktop\medilink\frontend\src\pages\QRCodePage.jsx
+  1:31  error  'useRef' is defined but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+C:\Users\digan\Desktop\medilink\frontend\src\pages\ScanQR.jsx
+   6:10  error  'scanning' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u     no-unused-vars
+   6:20  error  'setScanning' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+  41:14  error  'err' is defined but never used                                                              no-unused-vars
+
+Γ£û 8 problems (8 errors, 0 warnings)
+
