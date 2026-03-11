@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import axios from 'axios'
 import { useAuth } from '../context/AuthContext'
 import toast from 'react-hot-toast'
+import { API_URL } from '../config'
 
 export default function Login() {
   const [form, setForm] = useState({ email: '', password: '' })
@@ -14,9 +15,21 @@ export default function Login() {
     e.preventDefault()
     setLoading(true)
     try {
-      const res = await axios.post('/auth/login', form)
-      login(res.data.access_token, res.data.user)
-      toast.success(`Welcome back, ${res.data.user.name}!`)
+      const response = await fetch(`${API_URL}/auth/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(form)
+      });
+      
+      const data = await response.json();
+      if (!response.ok) {
+        throw { response: { data } };
+      }
+      
+      login(data.access_token, data.user)
+      toast.success(`Welcome back, ${data.user.name}!`)
       navigate('/dashboard')
     } catch (err) {
       toast.error(err.response?.data?.detail || 'Login failed. Check your credentials.')
