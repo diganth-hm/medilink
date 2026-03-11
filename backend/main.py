@@ -32,7 +32,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:5173",  # Dev
+        "https://medilink-1hjl.vercel.app",  # Dev
         "http://127.0.0.1:5173",
         "https://medilink.vercel.app",  # Common production domain
         "*"  # Allows any Vercel preview domain (restrict this later if needed)
