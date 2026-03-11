@@ -13,6 +13,7 @@ import ScanQR from './pages/ScanQR'
 import EmergencyView from './pages/EmergencyView'
 import Chatbot from './pages/Chatbot'
 import MedicalRecords from './pages/MedicalRecords'
+import EmergencyPage from './pages/emergency/[token]'
 
 export default function App() {
   return (
@@ -39,6 +40,7 @@ export default function App() {
           <Route path="/register" element={<Register />} />
           <Route path="/scan" element={<ScanQR />} />
           <Route path="/emergency/:qr_token" element={<EmergencyView />} />
+          <Route path="/emergency/:token" element={<EmergencyPage />} />
 
           {/* Protected routes */}
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
