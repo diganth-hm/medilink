@@ -11,7 +11,7 @@ import uuid
 
 router = APIRouter()
 
-BASE_URL = "http://localhost:5173"
+BASE_URL = "https://medilink-1hjl.vercel.app"
 
 
 @router.post("/generate", response_model=QRCodeOut)
