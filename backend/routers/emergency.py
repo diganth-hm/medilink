@@ -1,10 +1,53 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+import urllib.request
+import urllib.parse
+import json
 from database import get_db
 from models import QRCode, User, MedicalProfile
 from schemas import EmergencyDataOut
 
 router = APIRouter()
+
+@router.get("/hospitals")
+def get_nearby_hospitals(lat: float, lng: float, radius: int = 5000):
+    query = f"""
+    [out:json][timeout:15];
+    (
+      node["amenity"="hospital"](around:{radius},{lat},{lng});
+      way["amenity"="hospital"](around:{radius},{lat},{lng});
+      relation["amenity"="hospital"](around:{radius},{lat},{lng});
+    );
+    out center;
+    """
+    url = "https://overpass-api.de/api/interpreter?data=" + urllib.parse.quote(query.strip())
+    
+    try:
+        req = urllib.request.Request(url, headers={'User-Agent': 'MediLink/1.0'})
+        with urllib.request.urlopen(req) as response:
+            data = json.loads(response.read().decode())
+            
+        hospitals = []
+        for index, elem in enumerate(data.get("elements", [])):
+            if index >= 15: # limit to top 15
+                break
+            tags = elem.get("tags", {})
+            name = tags.get("name", "Unknown Hospital")
+            phone = tags.get("phone", tags.get("contact:phone", "N/A"))
+            address = tags.get("addr:full", tags.get("addr:street", "Address not available"))
+            
+            hospitals.append({
+                "id": elem.get("id"),
+                "name": name,
+                "phone": phone,
+                "address": address,
+                "emergency": "24/7 Available" if tags.get("emergency") == "yes" else "Unknown",
+                "dist": f"~{radius/1000} km"
+            })
+            
+        return {"hospitals": hospitals}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/{qr_token}", response_model=EmergencyDataOut)

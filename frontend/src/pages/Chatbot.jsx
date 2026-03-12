@@ -184,7 +184,7 @@ export default function Chatbot() {
     }
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        window.currentLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude }
+        window.currentLocation = `${pos.coords.latitude},${pos.coords.longitude}`
         toast.success('Location shared with AI')
         sendMessage(`My current location is ${pos.coords.latitude}, ${pos.coords.longitude}`)
       },

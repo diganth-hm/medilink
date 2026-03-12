@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import toast from 'react-hot-toast'
+import { API_URL } from '../config'
 
 export default function NearbyHospitals() {
   const [loading, setLoading] = useState(true)
@@ -14,19 +15,21 @@ export default function NearbyHospitals() {
     }
 
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
+      async (pos) => {
         setLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude })
-        // Simulation of fetching nearby hospitals based on lat/lng
-        // In a real app, use Google Maps Places API or OverPass API
-        setTimeout(() => {
+        try {
+          const res = await fetch(`${API_URL}/emergency/hospitals?lat=${pos.coords.latitude}&lng=${pos.coords.longitude}`);
+          if (!res.ok) throw new Error("Failed to fetch");
+          const data = await res.json();
+          setHospitals(data.hospitals || []);
+        } catch (err) {
+          toast.error('Failed to get real-time hospital data. Using fallback.');
           setHospitals([
-            { id: 1, name: "Apollo Hospitals", phone: "+91 80 2630 4050", address: "154/11, Bannerghatta Road, Opp. IIM, Bangalore", emergency: "24/7 Available", dist: "1.2 km" },
-            { id: 2, name: "Fortis Hospital", phone: "+91 80 6621 4444", address: "154/9, Bannerghatta Road, Bangalore", emergency: "24/7 Available", dist: "1.5 km" },
-            { id: 3, name: "Sagar Hospitals", phone: "+91 80 4288 8888", address: "44/54, 30th Cross Rd, Tilak Nagar, Jayanagar, Bangalore", emergency: "24/7 Available", dist: "2.8 km" },
-            { id: 4, name: "Jayadeva Institute", phone: "+91 80 2297 7400", address: "Bannerghatta Main Rd, Jayanagara 9th Block, Bangalore", emergency: "Cardiology Dept 24/7", dist: "3.1 km" },
+             { id: 1, name: "Fallback Hospital", phone: "108", address: "City Center", emergency: "24/7 Available", dist: "N/A" }
           ])
+        } finally {
           setLoading(false)
-        }, 1500)
+        }
       },
       (err) => {
         toast.error('Failed to get location. Showing results for city center.')

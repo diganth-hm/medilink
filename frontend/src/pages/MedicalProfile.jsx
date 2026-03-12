@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import axios from 'axios'
 import toast from 'react-hot-toast'
 import ChatWidget from '../components/ChatWidget'
+import { useAuth } from '../context/AuthContext'
+import { API_URL } from '../config'
 
 const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']
 
@@ -59,27 +61,29 @@ export default function MedicalProfile() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [isNew, setIsNew] = useState(true)
-  const { user } = useAuth()
+  const { user, token } = useAuth()
 
   useEffect(() => {
-    axios.get('/patient/profile')
+    if (!token) return;
+    axios.get(`${API_URL}/patient/profile`, { headers: { Authorization: `Bearer ${token}` } })
       .then(res => {
         setForm({ ...defaultForm, ...res.data })
         setIsNew(false)
       })
       .catch(() => setIsNew(true))
       .finally(() => setLoading(false))
-  }, [])
+  }, [token])
 
   const handleSave = async (e) => {
     e.preventDefault()
     setSaving(true)
     try {
+      const config = { headers: { Authorization: `Bearer ${token}` } };
       if (isNew) {
-        await axios.post('/patient/profile', form)
+        await axios.post(`${API_URL}/patient/profile`, form, config)
         setIsNew(false)
       } else {
-        await axios.put('/patient/profile', form)
+        await axios.put(`${API_URL}/patient/profile`, form, config)
       }
       toast.success('Medical profile saved successfully! ✅')
     } catch (err) {

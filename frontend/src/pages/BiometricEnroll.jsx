@@ -6,15 +6,52 @@ import { useAuth } from '../context/AuthContext'
 
 export default function BiometricEnroll() {
   const [loading, setLoading] = useState(false)
-  const { token } = useAuth()
+  const { token, user } = useAuth()
   const navigate = useNavigate()
 
   const handleEnroll = async () => {
     setLoading(true)
     try {
-      // Simulation of Biometric Enrollment
-      // In a real web app, we'd use WebAuthn API here.
-      const template = "demo_fingerprint_template_" + Math.random().toString(36).substring(7)
+      if (!window.PublicKeyCredential) {
+        throw new Error('WebAuthn is not supported by this browser.')
+      }
+
+      // Generate random challenge and user id for demo
+      const challenge = new Uint8Array(32)
+      crypto.getRandomValues(challenge)
+      const userId = new Uint8Array(16)
+      crypto.getRandomValues(userId)
+      
+      const publicKeyCredentialCreationOptions = {
+        challenge: challenge,
+        rp: {
+          name: "MediLink",
+          // id is required to match current origin domain or be a suffix. 
+          // Defaulting without ID often works best for localhost/ip.
+        },
+        user: {
+          id: userId,
+          name: user?.email || "user@example.com",
+          displayName: user?.name || "User"
+        },
+        pubKeyCredParams: [{alg: -7, type: "public-key"}, {alg: -257, type: "public-key"}],
+        authenticatorSelection: {
+          authenticatorAttachment: "platform",
+          userVerification: "required"
+        },
+        timeout: 60000,
+        attestation: "direct"
+      };
+
+      const credential = await navigator.credentials.create({
+        publicKey: publicKeyCredentialCreationOptions
+      });
+
+      if (!credential) {
+        throw new Error('Biometric enrollment cancelled by user.');
+      }
+
+      const template = btoa(String.fromCharCode.apply(null, new Uint8Array(credential.rawId)));
       
       const res = await fetch(`${API_URL}/auth/biometric/enroll`, {
         method: 'POST',
@@ -25,12 +62,14 @@ export default function BiometricEnroll() {
         body: JSON.stringify({ biometric_template: template }),
       })
 
-      if (!res.ok) throw new Error('Enrollment failed')
+      if (!res.ok) throw new Error('Backend registration failed')
       
+      // Shows success only after WebAuthn resolves successfully
       toast.success('Fingerprint enrolled successfully!')
       navigate('/dashboard')
     } catch (err) {
-      toast.error(err.message)
+      console.error(err)
+      toast.error(err.message || 'Enrollment failed or cancelled.')
     } finally {
       setLoading(false)
     }

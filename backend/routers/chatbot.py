@@ -162,11 +162,13 @@ async def chat(payload: ChatMessage, db: Session = Depends(get_db)):
     # -----------------------------------------------------------------------
     if state.get("state") == "awaiting_location":
         location_info = extract_location_info(message)
-        # Also treat the whole message as a possible city/pincode
+        # Also treat the whole message as a possible city/pincode or check live location
         if not location_info:
             import re
             if re.match(r"^\d{6}$", message.strip()):
                 location_info = {"pincode": message.strip()}
+            elif payload.location and "," in payload.location and "{" not in payload.location:
+                location_info = {"coordinates": payload.location, "city": "Your Live Location"}
             else:
                 location_info = {"city": message.strip().title()}
 

@@ -291,6 +291,9 @@ def is_metro_pincode(pincode: str) -> bool:
 
 def get_pharmacy_availability(location_info: Dict) -> List[str]:
     """Return available platform names based on location info."""
+    if "coordinates" in location_info:
+        return list(PLATFORMS.keys())  # Assumed all platforms available for demo when live coordinates
+
     pincode = location_info.get("pincode", "")
     city = location_info.get("city", "").lower()
 
