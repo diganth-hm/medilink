@@ -35,9 +35,11 @@ app.add_middleware(
     allow_origins=[
         "https://medilink-1hjl.vercel.app",  # Dev
         "http://127.0.0.1:5173",
+        "http://localhost:5173",
         "https://medilink.vercel.app",  # Common production domain
-        "*"  # Allows any Vercel preview domain (restrict this later if needed)
+        "https://medilink-1hjl-10cupx6xm-diganth-hms-projects.vercel.app" # The user's current preview URL
     ],
+    allow_origin_regex=r"https://.*\.vercel\.app", # Allow all vercel preview domains dynamically
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
