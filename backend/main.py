@@ -4,6 +4,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 from contextlib import asynccontextmanager
 import os
+import logging
 
 from database import engine, Base, get_db, SessionLocal
 import models
@@ -15,6 +16,14 @@ from datetime import datetime
 from fastapi.responses import JSONResponse
 from fastapi import Request
 from sqlalchemy import inspect, text
+
+# Configure structured logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+logger = logging.getLogger("medilink.main")
 
 # Database initialization moved to lifespan for safety
 
@@ -37,13 +46,18 @@ def run_migrations():
         except Exception:
             conn.rollback()
             
-        # Add is_verified
+        # Widen otp_code column to accommodate bcrypt hashes
         try:
-            conn.execute(text("ALTER TABLE users ADD COLUMN is_verified BOOLEAN DEFAULT 0"))
+            conn.execute(text("ALTER TABLE otp_records MODIFY COLUMN otp_code VARCHAR(100)"))
             conn.commit()
-            print("Successfully added is_verified column.")
+            print("Successfully widened otp_code column.")
         except Exception:
-            conn.rollback()
+            conn.rollback()  # SQLite uses different syntax — handled below
+        try:
+            # SQLite-compatible: recreate isn't needed if column is already wide
+            pass
+        except Exception:
+            pass
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

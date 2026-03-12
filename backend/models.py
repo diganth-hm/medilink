@@ -119,7 +119,7 @@ class OTPRecord(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     identifier = Column(String(200), index=True)  # email or phone
-    otp_code = Column(String(10))
+    otp_code = Column(String(100))  # bcrypt hash of the OTP (60 chars + margin)
     expires_at = Column(DateTime)
     attempts = Column(Integer, default=0)
 
