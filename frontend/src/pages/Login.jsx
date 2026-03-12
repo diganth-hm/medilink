@@ -6,40 +6,59 @@ import toast from 'react-hot-toast'
 import { API_URL } from '../config'
 
 export default function Login() {
-  const [form, setForm] = useState({ email: '', password: '' })
+  const [step, setStep] = useState('identifier')
+  const [identifier, setIdentifier] = useState('')
+  const [otp, setOtp] = useState('')
   const [loading, setLoading] = useState(false)
   const { login } = useAuth()
   const navigate = useNavigate()
 
-  const handleSubmit = async (e) => {
+  const handleSendOtp = async (e) => {
     e.preventDefault()
+    if (!identifier.trim()) return
     setLoading(true)
     try {
-      const response = await fetch(`${API_URL}/auth/login`, {
+      const res = await fetch(`${API_URL}/auth/send-otp`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(form)
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ identifier: identifier.trim() })
       });
-      
-      const data = await response.json();
-      if (!response.ok) {
-        throw { response: { data } };
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.detail || 'Failed to send OTP')
+      }
+      toast.success('OTP sent! Check your email or messages.')
+      setStep('verify')
+    } catch (err) {
+      toast.error(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleVerifyOtp = async (e) => {
+    e.preventDefault()
+    if (!otp.trim() || otp.length !== 6) return
+    setLoading(true)
+    try {
+      const res = await fetch(`${API_URL}/auth/verify-otp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ identifier: identifier.trim(), otp_code: otp.trim() })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.detail || 'Invalid OTP')
       }
       
       login(data.access_token, data.user)
       toast.success(`Welcome back, ${data.user.name}!`)
       navigate('/dashboard')
     } catch (err) {
-      toast.error(err.response?.data?.detail || 'Login failed. Check your credentials.')
+      toast.error(err.message)
     } finally {
       setLoading(false)
     }
-  }
-
-  const fillDemo = (email) => {
-    setForm({ email, password: 'demo1234' })
   }
 
   return (
