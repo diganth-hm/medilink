@@ -114,26 +114,13 @@ def _send_via_sendgrid(to_email: str, subject: str, body_html: str, body_text: s
 
 def _build_otp_email(otp: str, expiry_minutes: int = 5):
     """Return (subject, html, plain) tuple for OTP email."""
-    subject = "🔐 Your MediLink Login OTP"
+    subject = "Your Login OTP"
     plain = (
-        f"Your MediLink OTP is: {otp}\n\n"
-        f"This code expires in {expiry_minutes} minutes.\n"
-        f"Do not share this code with anyone.\n\n"
-        f"If you did not request this, please ignore this email."
+        f"Your verification OTP is: {otp}\n"
+        f"This OTP expires in {expiry_minutes} minutes."
     )
-    html = f"""
-    <div style="font-family:Arial,sans-serif;max-width:480px;margin:auto;background:#0f172a;color:#f1f5f9;padding:32px;border-radius:12px">
-      <h2 style="color:#60a5fa;margin-bottom:4px">🏥 MediLink</h2>
-      <p style="color:#94a3b8;font-size:13px">Emergency Medical Access System</p>
-      <hr style="border-color:#1e293b;margin:20px 0">
-      <p style="font-size:15px">Your one-time login code is:</p>
-      <div style="background:#1e3a5f;border:2px solid #3b82f6;border-radius:10px;padding:20px;text-align:center;margin:20px 0">
-        <span style="font-size:40px;font-weight:bold;letter-spacing:12px;color:#93c5fd">{otp}</span>
-      </div>
-      <p style="color:#94a3b8;font-size:13px">⏱ Expires in <strong>{expiry_minutes} minutes</strong></p>
-      <p style="color:#64748b;font-size:12px">Do not share this code with anyone. MediLink will never ask for your OTP.</p>
-    </div>
-    """
+    # Simple HTML fallback that matches the plain text requirement
+    html = f"<p>Your verification OTP is: <strong>{otp}</strong><br>This OTP expires in {expiry_minutes} minutes.</p>"
     return subject, html, plain
 
 

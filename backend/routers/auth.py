@@ -86,16 +86,19 @@ def send_otp_route(request: OTPRequest, db: Session = Depends(get_db)):
 
     is_email = "@" in identifier
     expiry_min = OTP_EXPIRY_MINUTES
+    
     otp_message = (
-        f"Your MediLink OTP is: {otp_code}. "
-        f"It expires in {expiry_min} minutes. "
-        f"Do not share this code with anyone."
+        f"Your verification OTP is: {otp_code}\n"
+        f"This OTP expires in {expiry_min} minutes."
     )
 
     sent = False
     if is_email:
-        sent = send_email(identifier, "Your MediLink Login OTP", otp_message)
-        logger.info("[AUTH] OTP email %s for %s", "sent" if sent else "FAILED (dev mode)", identifier)
+        sent = send_email(identifier, "Your Login OTP", otp_message)
+        if sent:
+            logger.info("[AUTH] OTP generation and email send SUCCESS for %s", identifier)
+        else:
+            logger.error("[AUTH] OTP generated but email sending FAILED for %s", identifier)
     else:
         sent = send_sms(identifier, otp_message)
         logger.info("[AUTH] OTP SMS %s for %s", "sent" if sent else "FAILED (dev mode)", identifier)
