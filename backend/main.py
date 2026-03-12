@@ -48,27 +48,26 @@ app.add_middleware(
 )
 
 @app.middleware("http")
-async def add_process_time_header(request: Request, call_next):
+async def cors_and_error_middleware(request: Request, call_next):
     if request.method == "OPTIONS":
         return JSONResponse(
-            content="OK",
+            content={"detail": "OK"},
             headers={
                 "Access-Control-Allow-Origin": "*",
                 "Access-Control-Allow-Methods": "*",
                 "Access-Control-Allow-Headers": "*",
             }
         )
-    response = await call_next(request)
-    response.headers["Access-Control-Allow-Origin"] = "*"
-    return response
-
-@app.exception_handler(Exception)
-async def global_exception_handler(request: Request, exc: Exception):
-    return JSONResponse(
-        status_code=500,
-        content={"detail": str(exc)},
-        headers={"Access-Control-Allow-Origin": "*"}
-    )
+    try:
+        response = await call_next(request)
+        response.headers["Access-Control-Allow-Origin"] = "*"
+        return response
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={"detail": f"Server Crash: {str(e)}"},
+            headers={"Access-Control-Allow-Origin": "*"}
+        )
 
 @app.get("/seed")
 def manual_seed(db: Session = Depends(get_db)):
