@@ -14,8 +14,27 @@ import uuid
 from datetime import datetime
 from fastapi.responses import JSONResponse
 from fastapi import Request
+from sqlalchemy import inspect, text
 
 # Database initialization moved to lifespan for safety
+
+def run_migrations():
+    """Manually check for missing columns and add them (simple migration)."""
+    inspector = inspect(engine)
+    if "users" in inspector.get_table_names():
+        columns = [c["name"] for c in inspector.get_columns("users")]
+        with engine.connect() as conn:
+            if "mobile_number" not in columns:
+                print("Migrating: Adding 'mobile_number' to 'users'")
+                conn.execute(text("ALTER TABLE users ADD COLUMN mobile_number VARCHAR(20)"))
+            if "biometric_template" not in columns:
+                print("Migrating: Adding 'biometric_template' to 'users'")
+                conn.execute(text("ALTER TABLE users ADD COLUMN biometric_template TEXT"))
+            if "is_verified" not in columns:
+                print("Migrating: Adding 'is_verified' to 'users'")
+                # SQLite handles BOOLEAN as 0/1, default 0
+                conn.execute(text("ALTER TABLE users ADD COLUMN is_verified BOOLEAN DEFAULT 0"))
+            conn.commit()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -24,6 +43,8 @@ async def lifespan(app: FastAPI):
     try:
         # Ensure database tables are created
         Base.metadata.create_all(bind=engine)
+        # Run simple migrations for existing databases
+        run_migrations()
         # Seed database
         seed_database()
     except Exception as e:
