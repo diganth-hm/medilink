@@ -12,8 +12,18 @@ class UserRegister(BaseModel):
 
 
 class UserLogin(BaseModel):
-    email: EmailStr
-    password: str
+    email: Optional[EmailStr] = None
+    mobile_number: Optional[str] = None
+    password: Optional[str] = None
+
+
+class OTPRequest(BaseModel):
+    identifier: str  # email or mobile
+
+
+class OTPVerify(BaseModel):
+    identifier: str
+    otp_code: str
 
 
 class UserOut(BaseModel):
@@ -21,6 +31,7 @@ class UserOut(BaseModel):
     name: str
     email: str
     role: str
+    mobile_number: Optional[str] = None
     created_at: datetime
 
     class Config:
@@ -132,3 +143,51 @@ class MedicalRecordOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class DoctorProfileBase(BaseModel):
+    doctor_id_code: str
+    specialization: str
+    license_number: str
+    hospital_name: str
+    contact_details: str
+
+
+class DoctorProfileCreate(DoctorProfileBase):
+    pass
+
+
+class DoctorProfileOut(DoctorProfileBase):
+    id: int
+    user_id: int
+
+    class Config:
+        from_attributes = True
+
+
+class FundraisingApplicationCreate(BaseModel):
+    name: str
+    medical_condition: str
+    hospital_name: str
+    estimated_cost: float
+    phone_number: str
+    email: EmailStr
+    description: str
+
+
+class FundraisingApplicationOut(FundraisingApplicationCreate):
+    id: int
+    status: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class BiometricEnrollment(BaseModel):
+    biometric_template: str
+
+
+class BiometricLogin(BaseModel):
+    user_id: int
+    biometric_template: str

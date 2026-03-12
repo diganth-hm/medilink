@@ -2,6 +2,8 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import axios from 'axios'
 import { v4 as uuidv4 } from 'uuid'
 import ChatWidget from '../components/ChatWidget'
+import toast from 'react-hot-toast'
+
 
 const SUGGESTIONS = [
   'I need Paracetamol 650mg, 10 tablets',
@@ -139,9 +141,15 @@ export default function Chatbot() {
     setLoading(true)
 
     try {
+      let locationData = null
+      if (msg.toLowerCase().includes('order') || orderState === 'awaiting_location') {
+        // Optionally auto-request location if not already provided
+      }
+
       const res = await axios.post('/chatbot/chat', {
         message: msg,
         session_id: sessionId,
+        location: window.currentLocation || null
       })
 
       const newState = res.data.order_state || 'idle'
@@ -168,6 +176,21 @@ export default function Chatbot() {
   const handleConfirm = useCallback(() => {
     sendMessage('confirm')
   }, [sendMessage])
+
+  const shareLocation = () => {
+    if (!navigator.geolocation) {
+      toast.error('Geolocation not supported')
+      return
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        window.currentLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude }
+        toast.success('Location shared with AI')
+        sendMessage(`My current location is ${pos.coords.latitude}, ${pos.coords.longitude}`)
+      },
+      () => toast.error('Failed to get location')
+    )
+  }
 
   const config = ORDER_STATE_CONFIG[orderState] || ORDER_STATE_CONFIG.idle
 
@@ -250,6 +273,16 @@ export default function Chatbot() {
               rows={2}
               className="flex-1 bg-transparent text-white placeholder-slate-500 focus:outline-none text-sm resize-none"
             />
+            <button
+              onClick={shareLocation}
+              title="Share Live Location"
+              className="w-10 h-10 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl flex items-center justify-center transition-colors flex-shrink-0 text-blue-400"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            </button>
             <button
               id="chatbot-send"
               onClick={() => sendMessage()}

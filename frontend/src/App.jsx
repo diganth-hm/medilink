@@ -14,6 +14,12 @@ import EmergencyView from './pages/EmergencyView'
 import Chatbot from './pages/Chatbot'
 import MedicalRecords from './pages/MedicalRecords'
 import EmergencyPage from './pages/emergency/[token]'
+import Fundraising from './pages/Fundraising'
+import NearbyHospitals from './pages/NearbyHospitals'
+import HospitalConcessions from './pages/HospitalConcessions'
+import MedicalIDCard from './pages/MedicalIDCard'
+import BiometricPortal from './pages/BiometricPortal'
+import BiometricEnroll from './pages/BiometricEnroll'
 
 export default function App() {
   return (
@@ -48,6 +54,12 @@ export default function App() {
           <Route path="/qr-code" element={<ProtectedRoute><QRCodePage /></ProtectedRoute>} />
           <Route path="/records" element={<ProtectedRoute><MedicalRecords /></ProtectedRoute>} />
           <Route path="/chatbot" element={<ProtectedRoute><Chatbot /></ProtectedRoute>} />
+          <Route path="/fundraising" element={<ProtectedRoute><Fundraising /></ProtectedRoute>} />
+          <Route path="/nearby-hospitals" element={<ProtectedRoute><NearbyHospitals /></ProtectedRoute>} />
+          <Route path="/concessions" element={<ProtectedRoute><HospitalConcessions /></ProtectedRoute>} />
+          <Route path="/medical-id" element={<ProtectedRoute><MedicalIDCard /></ProtectedRoute>} />
+          <Route path="/biometric-portal" element={<ProtectedRoute><BiometricPortal /></ProtectedRoute>} />
+          <Route path="/biometric-enroll" element={<ProtectedRoute><BiometricEnroll /></ProtectedRoute>} />
 
           {/* 404 */}
           <Route path="*" element={

@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from database import get_db
-from models import QRCode, User, MedicalProfile, MedicalRecord
-from schemas import MedicalRecordOut
+from models import QRCode, User, MedicalProfile, MedicalRecord, DoctorProfile
+from schemas import MedicalRecordOut, DoctorProfileCreate, DoctorProfileOut
 from auth import get_current_user
 from typing import List
 
@@ -17,6 +17,39 @@ def _require_doctor(current_user_id: int, db: Session) -> User:
     if user.role != "doctor":
         raise HTTPException(status_code=403, detail="Access denied: Doctor role required")
     return user
+
+
+@router.post("/profile", response_model=DoctorProfileOut)
+def update_doctor_profile(
+    profile_data: DoctorProfileCreate,
+    db: Session = Depends(get_db),
+    current_user_id: int = Depends(get_current_user),
+):
+    user = _require_doctor(current_user_id, db)
+    
+    profile = db.query(DoctorProfile).filter(DoctorProfile.user_id == user.id).first()
+    if profile:
+        for key, value in profile_data.model_dump().items():
+            setattr(profile, key, value)
+    else:
+        profile = DoctorProfile(**profile_data.model_dump(), user_id=user.id)
+        db.add(profile)
+    
+    db.commit()
+    db.refresh(profile)
+    return profile
+
+
+@router.get("/profile", response_model=DoctorProfileOut)
+def get_doctor_profile(
+    db: Session = Depends(get_db),
+    current_user_id: int = Depends(get_current_user),
+):
+    user = _require_doctor(current_user_id, db)
+    profile = db.query(DoctorProfile).filter(DoctorProfile.user_id == user.id).first()
+    if not profile:
+        raise HTTPException(status_code=404, detail="Doctor profile not found")
+    return profile
 
 
 @router.get("/patient-records/{qr_token}")
@@ -41,9 +74,19 @@ def get_patient_full_records(
         raise HTTPException(status_code=404, detail="Patient not found")
 
     profile = db.query(MedicalProfile).filter(MedicalProfile.user_id == patient.id).first()
+    
+    # Access Control for records: Only issuing doctor and the patient can access certain records?
+    # Requirement: "Only that doctor and the patient can access the certificate."
+    # We will filter records based on this.
+    
     records = (
         db.query(MedicalRecord)
         .filter(MedicalRecord.user_id == patient.id)
+        .filter(
+            (MedicalRecord.issuing_doctor_id == None) | 
+            (MedicalRecord.issuing_doctor_id == current_user_id) |
+            (MedicalRecord.user_id == current_user_id)
+        )
         .order_by(MedicalRecord.uploaded_at.desc())
         .all()
     )
@@ -57,7 +100,7 @@ def get_patient_full_records(
             "original_filename": r.original_filename,
             "file_size": r.file_size,
             "uploaded_at": r.uploaded_at.isoformat(),
-            "download_url": f"/records/{r.id}/download",
+            "download_url": f"/records/download/{r.id}",
         }
         for r in records
     ]

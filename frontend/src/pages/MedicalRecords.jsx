@@ -28,7 +28,7 @@ export default function MedicalRecords() {
   const [uploading, setUploading] = useState(false)
   const [dragOver, setDragOver] = useState(false)
   const [previewRecord, setPreviewRecord] = useState(null)
-  const [uploadForm, setUploadForm] = useState({ title: '', description: '' })
+  const [uploadForm, setUploadForm] = useState({ title: '', description: '', issuing_doctor_code: '' })
   const [pendingFile, setPendingFile] = useState(null)
   const [uploadProgress, setUploadProgress] = useState(0)
   const fileInputRef = useRef(null)
@@ -83,6 +83,7 @@ export default function MedicalRecords() {
       formData.append('file', pendingFile)
       formData.append('title', uploadForm.title.trim())
       if (uploadForm.description) formData.append('description', uploadForm.description)
+      if (uploadForm.issuing_doctor_code) formData.append('issuing_doctor_code', uploadForm.issuing_doctor_code)
 
       await axios.post('/records/upload', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
@@ -92,7 +93,7 @@ export default function MedicalRecords() {
       })
       toast.success('Record uploaded successfully!')
       setPendingFile(null)
-      setUploadForm({ title: '', description: '' })
+      setUploadForm({ title: '', description: '', issuing_doctor_code: '' })
       setUploadProgress(0)
       fetchRecords()
     } catch (err) {
@@ -218,6 +219,18 @@ export default function MedicalRecords() {
               className="w-full bg-slate-800 border border-slate-600 rounded-xl px-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 text-sm"
             />
           </div>
+        </div>
+
+        <div className="mb-6">
+          <label className="block text-sm text-slate-400 mb-1">Issuing Doctor ID <span className="text-xs text-slate-500">(Required for restricted certificates)</span></label>
+          <input
+            type="text"
+            placeholder="e.g. DOC456"
+            value={uploadForm.issuing_doctor_code}
+            onChange={(e) => setUploadForm(f => ({ ...f, issuing_doctor_code: e.target.value }))}
+            className="w-full bg-slate-800 border border-slate-600 rounded-xl px-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 text-sm"
+          />
+          <p className="text-[10px] text-slate-500 mt-1 italic">When provided, only you and the specified doctor can access this document.</p>
         </div>
 
         {/* Progress bar */}

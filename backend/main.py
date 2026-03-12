@@ -7,7 +7,7 @@ import os
 
 from database import engine, Base, get_db
 import models
-from routers import auth, patients, qrcode_routes, emergency, chatbot, records, doctor
+from routers import auth, patients, qrcode_routes, emergency, chatbot, records, doctor, fundraising
 from auth import hash_password
 import uuid
 from datetime import datetime
@@ -50,6 +50,7 @@ app.include_router(emergency.router, prefix="/emergency", tags=["Emergency"])
 app.include_router(chatbot.router, prefix="/chatbot", tags=["Chatbot"])
 app.include_router(records.router, prefix="/records", tags=["Medical Records"])
 app.include_router(doctor.router, prefix="/doctor", tags=["Doctor"])
+app.include_router(fundraising.router, prefix="/fundraising", tags=["Fundraising"])
 
 # Serve uploaded files
 UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "uploads")
@@ -64,6 +65,36 @@ def root():
 @app.get("/health")
 def health_check():
     return {"status": "healthy", "service": "MediLink API"}
+
+
+@app.post("/auth/biometric/enroll", tags=["Biometric"])
+def enroll_biometric(
+    data: BiometricEnrollment,
+    db: Session = Depends(get_db),
+    current_user_id: int = Depends(get_current_user),
+):
+    user = db.query(models.User).filter(models.User.id == current_user_id).first()
+    user.biometric_template = data.biometric_template
+    db.commit()
+    return {"message": "Biometric enrolled successfully"}
+
+
+@app.post("/auth/biometric/verify", response_model=Token, tags=["Biometric"])
+def verify_biometric(
+    data: BiometricLogin,
+    db: Session = Depends(get_db),
+):
+    # This is a simplified biometric check for demo purposes
+    user = db.query(models.User).filter(models.User.id == data.user_id).first()
+    if not user or user.biometric_template != data.biometric_template:
+        raise HTTPException(status_code=401, detail="Biometric authentication failed")
+    
+    token = create_access_token(data={"sub": str(user.id)})
+    return Token(
+        access_token=token,
+        token_type="bearer",
+        user=UserOut.model_validate(user)
+    )
 
 
 def seed_database():

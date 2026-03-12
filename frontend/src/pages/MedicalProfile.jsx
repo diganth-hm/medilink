@@ -13,6 +13,8 @@ const defaultForm = {
   doctor_name: '', doctor_phone: '',
   has_pacemaker: false, has_implants: false, is_diabetic: false,
   is_cardiac_patient: false, is_epileptic: false, is_asthmatic: false,
+  // Doctor Verification Fields
+  doctor_id: '', hospital_name: '', specialization: '', license_number: '', contact_details: ''
 }
 
 // ── Defined OUTSIDE MedicalProfile so React doesn't recreate them each render ──
@@ -57,6 +59,7 @@ export default function MedicalProfile() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [isNew, setIsNew] = useState(true)
+  const { user } = useAuth()
 
   useEffect(() => {
     axios.get('/patient/profile')
@@ -165,6 +168,19 @@ export default function MedicalProfile() {
             <Field label="Doctor Phone" id="doctor_phone" type="tel" placeholder="+1 555 000 0000" value={form.doctor_phone || ''} onSet={set} />
           </div>
         </Section>
+
+        {/* Section 8: Doctor Verification (Doctors Only) */}
+        {user?.role === 'doctor' && (
+          <Section title="Doctor Verification Details" icon="📜">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Field label="Doctor ID" id="doctor_id" type="text" placeholder="e.g. DOC123" value={form.doctor_id || ''} onSet={set} />
+              <Field label="Medical License Number" id="license_number" type="text" placeholder="e.g. LIC/887/2020" value={form.license_number || ''} onSet={set} />
+              <Field label="Hospital Name" id="hospital_name" type="text" placeholder="e.g. Apollo Hospital" value={form.hospital_name || ''} onSet={set} />
+              <Field label="Specialization" id="specialization" type="text" placeholder="e.g. Cardiologist" value={form.specialization || ''} onSet={set} />
+            </div>
+            <Field label="Official Contact Details" id="contact_details" textarea placeholder="e.g. Clinic Address, Office Phone..." value={form.contact_details || ''} onSet={set} />
+          </Section>
+        )}
 
         {/* Save */}
         <div className="sticky bottom-4 mt-4">

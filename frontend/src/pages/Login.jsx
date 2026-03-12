@@ -47,76 +47,59 @@ export default function Login() {
       <div className="w-full max-w-md">
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-violet-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-xl">
-            <svg className="w-9 h-9 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-            </svg>
-          </div>
-          <h1 className="text-3xl font-bold text-white">Welcome Back</h1>
-          <p className="text-slate-400 mt-2">Sign in to your MediLink account</p>
+          <h1 className="text-3xl font-bold text-white mb-2">Welcome Back</h1>
+          <p className="text-slate-400">Login with OTP for secure access</p>
         </div>
 
-        {/* Demo Credentials */}
-        <div className="card mb-6 bg-blue-900/20 border-blue-500/20">
-          <p className="text-sm text-blue-300 font-semibold mb-3">🧪 Demo Accounts</p>
-          <div className="space-y-2">
-            <button onClick={() => fillDemo('john.doe@demo.com')} className="w-full text-left p-2 rounded-lg hover:bg-slate-700/50 transition-colors">
-              <span className="text-xs text-slate-400 block">Cardiac + Diabetic patient</span>
-              <span className="text-sm text-white font-mono">john.doe@demo.com</span>
-            </button>
-            <button onClick={() => fillDemo('jane.smith@demo.com')} className="w-full text-left p-2 rounded-lg hover:bg-slate-700/50 transition-colors">
-              <span className="text-xs text-slate-400 block">Epileptic + Asthmatic patient</span>
-              <span className="text-sm text-white font-mono">jane.smith@demo.com</span>
-            </button>
-            <p className="text-xs text-slate-500 mt-1">Password for both: <span className="font-mono">demo1234</span></p>
-          </div>
-        </div>
-
-        {/* Form */}
-        <div className="card">
-          <form onSubmit={handleSubmit} className="space-y-5">
+        {step === 'identifier' ? (
+          <form onSubmit={handleSendOtp} className="space-y-6">
             <div>
-              <label className="label">Email Address</label>
+              <label className="block text-sm font-medium text-slate-300 mb-2">Email or Mobile Number</label>
               <input
-                id="login-email"
-                type="email"
-                className="input"
-                placeholder="you@example.com"
-                value={form.email}
-                onChange={e => setForm({ ...form, email: e.target.value })}
+                type="text"
                 required
+                className="input-field"
+                placeholder="e.g. john@example.com or 9876543210"
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
               />
             </div>
-            <div>
-              <label className="label">Password</label>
-              <input
-                id="login-password"
-                type="password"
-                className="input"
-                placeholder="Your password"
-                value={form.password}
-                onChange={e => setForm({ ...form, password: e.target.value })}
-                required
-              />
-            </div>
-            <button
-              id="login-submit"
-              type="submit"
-              disabled={loading}
-              className="btn-primary w-full py-3.5 text-base flex items-center justify-center gap-2 disabled:opacity-50"
-            >
-              {loading ? (
-                <>
-                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  Signing in...
-                </>
-              ) : 'Sign In'}
+            <button type="submit" disabled={loading} className="btn-primary w-full py-3">
+              {loading ? 'Sending...' : 'Send OTP'}
             </button>
           </form>
+        ) : (
+          <form onSubmit={handleVerifyOtp} className="space-y-6">
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-2">Enter 6-digit OTP</label>
+              <input
+                type="text"
+                required
+                maxLength={6}
+                className="input-field text-center tracking-[1em] font-mono text-xl"
+                placeholder="000000"
+                value={otp}
+                onChange={(e) => setOtp(e.target.value)}
+              />
+              <p className="text-xs text-slate-500 mt-2 text-center">OTP expires in 2 minutes</p>
+            </div>
+            <button type="submit" disabled={loading} className="btn-primary w-full py-3">
+              {loading ? 'Verifying...' : 'Login'}
+            </button>
+            <button 
+              type="button" 
+              onClick={() => setStep('identifier')}
+              className="w-full text-sm text-slate-400 hover:text-white transition-colors"
+            >
+              Change Email/Mobile
+            </button>
+          </form>
+        )}
 
-          <p className="text-center text-slate-400 text-sm mt-6">
+        <div className="mt-8 pt-6 border-t border-slate-700/50 text-center">
+          <p className="text-slate-400">
             Don't have an account?{' '}
-            <Link to="/register" className="text-blue-400 hover:text-blue-300 font-medium">Register here</Link>
+            <Link to="/register" className="text-blue-400 hover:text-blue-300 font-medium transition-colors">Register</Link>
           </p>
         </div>
       </div>

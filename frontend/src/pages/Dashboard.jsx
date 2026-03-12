@@ -135,6 +135,46 @@ export default function Dashboard() {
             btn: 'Open Chat',
             gradient: 'from-emerald-600 to-teal-700',
           },
+          {
+            icon: '💰',
+            title: 'Medical Fundraising',
+            desc: 'Apply for emergency medical fundraising support',
+            link: '/fundraising',
+            btn: 'Apply Now',
+            gradient: 'from-orange-600 to-amber-700',
+          },
+          {
+            icon: '🏥',
+            title: 'Nearby Hospitals',
+            desc: 'Emergency hospital directory with live availability',
+            link: '/nearby-hospitals',
+            btn: 'Find Hospitals',
+            gradient: 'from-red-600 to-rose-700',
+          },
+          {
+            icon: '🎫',
+            title: 'Hospital Concessions',
+            desc: 'Government schemes and hospital bill concessions',
+            link: '/concessions',
+            btn: 'View Schemes',
+            gradient: 'from-blue-600 to-indigo-700',
+          },
+          {
+            icon: '🪪',
+            title: 'Medical ID Card',
+            desc: 'Generate your digital medical ID with QR code',
+            link: '/medical-id',
+            btn: 'Generate ID',
+            gradient: 'from-violet-600 to-purple-700',
+          },
+          {
+            icon: '🔬',
+            title: 'Biometric Enrollment',
+            desc: 'Register your fingerprint for secure access',
+            link: '/biometric-enroll',
+            btn: 'Enroll Now',
+            gradient: 'from-cyan-600 to-teal-700',
+          },
         ].map((action, i) => (
           <div key={i} className="card-hover flex flex-col">
             <div className="text-4xl mb-3">{action.icon}</div>

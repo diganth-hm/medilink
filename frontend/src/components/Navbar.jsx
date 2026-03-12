@@ -30,6 +30,19 @@ export default function Navbar() {
             <span className="text-xl font-bold text-white">Medi<span className="gradient-text">Link</span></span>
           </Link>
 
+          {/* Help Center Button */}
+          <div className="flex-1 max-w-xs mx-4 hidden lg:block">
+            <a 
+              href="mailto:medilinkorg@yahoo.com" 
+              className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-800/50 border border-slate-700/50 hover:bg-slate-700/50 transition-colors text-xs text-slate-300"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z" />
+              </svg>
+              Help Center
+            </a>
+          </div>
+
           {/* Desktop Nav */}
           <div className="hidden md:flex items-center gap-1">
             {isAuthenticated ? (
@@ -38,7 +51,11 @@ export default function Navbar() {
                 <Link to="/profile" className={`btn-ghost ${isActive('/profile') ? 'text-blue-400 bg-blue-500/10' : ''}`}>Profile</Link>
                 <Link to="/qr-code" className={`btn-ghost ${isActive('/qr-code') ? 'text-blue-400 bg-blue-500/10' : ''}`}>My QR</Link>
                 <Link to="/records" className={`btn-ghost ${isActive('/records') ? 'text-blue-400 bg-blue-500/10' : ''}`}>Records</Link>
+                <Link to="/fundraising" className={`btn-ghost ${isActive('/fundraising') ? 'text-blue-400 bg-blue-500/10' : ''}`}>Fundraising</Link>
                 <Link to="/chatbot" className={`btn-ghost ${isActive('/chatbot') ? 'text-blue-400 bg-blue-500/10' : ''}`}>AI Assistant</Link>
+                {(user?.role === 'doctor' || user?.role === 'hospital') && (
+                  <Link to="/biometric-portal" className={`btn-ghost ${isActive('/biometric-portal') ? 'text-emerald-400 bg-emerald-500/10' : ''}`}>Biometric Portal</Link>
+                )}
                 <div className="mx-2 h-6 w-px bg-slate-700" />
                 <span className="text-sm text-slate-400 mr-2">{user?.name}</span>
                 <button onClick={handleLogout} className="btn-secondary text-sm px-4 py-2">Logout</button>
