@@ -19,22 +19,31 @@ from sqlalchemy import inspect, text
 # Database initialization moved to lifespan for safety
 
 def run_migrations():
-    """Manually check for missing columns and add them (simple migration)."""
-    inspector = inspect(engine)
-    if "users" in inspector.get_table_names():
-        columns = [c["name"] for c in inspector.get_columns("users")]
-        with engine.connect() as conn:
-            if "mobile_number" not in columns:
-                print("Migrating: Adding 'mobile_number' to 'users'")
-                conn.execute(text("ALTER TABLE users ADD COLUMN mobile_number VARCHAR(20)"))
-            if "biometric_template" not in columns:
-                print("Migrating: Adding 'biometric_template' to 'users'")
-                conn.execute(text("ALTER TABLE users ADD COLUMN biometric_template TEXT"))
-            if "is_verified" not in columns:
-                print("Migrating: Adding 'is_verified' to 'users'")
-                # SQLite handles BOOLEAN as 0/1, default 0
-                conn.execute(text("ALTER TABLE users ADD COLUMN is_verified BOOLEAN DEFAULT 0"))
+    """Safely attempt to add missing columns to the users table."""
+    with engine.connect() as conn:
+        # Add mobile_number
+        try:
+            conn.execute(text("ALTER TABLE users ADD COLUMN mobile_number VARCHAR(20)"))
             conn.commit()
+            print("Successfully added mobile_number column.")
+        except Exception:
+            conn.rollback() # Column likely already exists
+            
+        # Add biometric_template
+        try:
+            conn.execute(text("ALTER TABLE users ADD COLUMN biometric_template TEXT"))
+            conn.commit()
+            print("Successfully added biometric_template column.")
+        except Exception:
+            conn.rollback()
+            
+        # Add is_verified
+        try:
+            conn.execute(text("ALTER TABLE users ADD COLUMN is_verified BOOLEAN DEFAULT 0"))
+            conn.commit()
+            print("Successfully added is_verified column.")
+        except Exception:
+            conn.rollback()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
