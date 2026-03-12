@@ -20,6 +20,8 @@ Base.metadata.create_all(bind=engine)
 async def lifespan(app: FastAPI):
     # Ensure upload directory exists
     os.makedirs("uploads", exist_ok=True)
+    # Seed database
+    seed_database()
     yield
 
 app = FastAPI(
