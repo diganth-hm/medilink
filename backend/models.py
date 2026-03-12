@@ -20,7 +20,8 @@ class User(Base):
     medical_profile = relationship("MedicalProfile", back_populates="user", uselist=False)
     qr_codes = relationship("QRCode", back_populates="user")
     chat_sessions = relationship("ChatSession", back_populates="user")
-    medical_records = relationship("MedicalRecord", back_populates="user")
+    medical_records = relationship("MedicalRecord", back_populates="user", foreign_keys="[MedicalRecord.user_id]")
+    issued_records = relationship("MedicalRecord", back_populates="issuing_doctor", foreign_keys="[MedicalRecord.issuing_doctor_id]")
     doctor_profile = relationship("DoctorProfile", back_populates="user", uselist=False)
 
 

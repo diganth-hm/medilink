@@ -5,10 +5,11 @@ from sqlalchemy.orm import Session
 from contextlib import asynccontextmanager
 import os
 
-from database import engine, Base, get_db
+from database import engine, Base, get_db, SessionLocal
 import models
 from routers import auth, patients, qrcode_routes, emergency, chatbot, records, doctor, fundraising
-from auth import hash_password
+from auth import hash_password, get_current_user, create_access_token
+from schemas import BiometricEnrollment, BiometricLogin, Token, UserOut
 import uuid
 from datetime import datetime
 
@@ -99,7 +100,7 @@ def verify_biometric(
 
 def seed_database():
     """Seed with 2 demo patients for testing."""
-    db = get_db() # Changed from SessionLocal()
+    db = SessionLocal()
     try:
         # Check if already seeded
         existing = db.query(models.User).filter(models.User.email == "john.doe@demo.com").first()
