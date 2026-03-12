@@ -12,16 +12,22 @@ from auth import hash_password, get_current_user, create_access_token
 from schemas import BiometricEnrollment, BiometricLogin, Token, UserOut
 import uuid
 from datetime import datetime
+from fastapi.responses import JSONResponse
+from fastapi import Request
 
-# Ensure database tables are created
-Base.metadata.create_all(bind=engine)
+# Database initialization moved to lifespan for safety
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Ensure upload directory exists
     os.makedirs("uploads", exist_ok=True)
-    # Seed database
-    seed_database()
+    try:
+        # Ensure database tables are created
+        Base.metadata.create_all(bind=engine)
+        # Seed database
+        seed_database()
+    except Exception as e:
+        print(f"Startup error: {e}")
     yield
 
 app = FastAPI(
@@ -31,14 +37,38 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# CORS
+# Highly permissive CORS for development/deployment testing
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"]
 )
+
+@app.middleware("http")
+async def add_process_time_header(request: Request, call_next):
+    if request.method == "OPTIONS":
+        return JSONResponse(
+            content="OK",
+            headers={
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Methods": "*",
+                "Access-Control-Allow-Headers": "*",
+            }
+        )
+    response = await call_next(request)
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    return response
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    return JSONResponse(
+        status_code=500,
+        content={"detail": str(exc)},
+        headers={"Access-Control-Allow-Origin": "*"}
+    )
 
 @app.get("/seed")
 def manual_seed(db: Session = Depends(get_db)):
