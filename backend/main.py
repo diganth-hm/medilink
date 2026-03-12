@@ -36,6 +36,7 @@ app.add_middleware(
         "https://medilink-1hjl.vercel.app",
         "https://medilink.vercel.app",
         "https://medilink-1hjl-10cupx6xm-diganth-hms-projects.vercel.app",
+        "https://medilink-1hjl-e2tqljthu-diganth-hms-projects.vercel.app",
         "http://localhost:5173",
         "http://127.0.0.1:5173",
     ],
