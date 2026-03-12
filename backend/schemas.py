@@ -119,7 +119,9 @@ class ChatMessage(BaseModel):
     message: str
     session_id: str
     patient_context: Optional[str] = None
-    location: Optional[str] = None  # city or pincode for pharmacy ordering
+    location: Optional[str] = None  # "lat,lng" string
+    lat: Optional[float] = None     # live GPS latitude
+    lng: Optional[float] = None     # live GPS longitude
 
 
 class ChatResponse(BaseModel):

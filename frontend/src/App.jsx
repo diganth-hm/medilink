@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import { AuthProvider } from './context/AuthContext'
+import { LocationProvider } from './context/LocationContext'
 import Navbar from './components/Navbar'
 import ProtectedRoute from './components/ProtectedRoute'
 import Home from './pages/Home'
@@ -24,7 +25,8 @@ import BiometricEnroll from './pages/BiometricEnroll'
 export default function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
+      <LocationProvider>
+        <BrowserRouter>
         <Navbar />
         <Toaster
           position="top-right"
@@ -74,6 +76,7 @@ export default function App() {
           } />
         </Routes>
       </BrowserRouter>
+      </LocationProvider>
     </AuthProvider>
   )
 }

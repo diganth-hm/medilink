@@ -50,6 +50,40 @@ def get_nearby_hospitals(lat: float, lng: float, radius: int = 5000):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/hospitals-gmaps")
+def get_hospitals_google(lat: float, lng: float, radius: int = 10000):
+    """Proxy Google Maps Places Nearby Search server-side to avoid browser CORS."""
+    import os
+    gmaps_key = os.getenv("GOOGLE_MAPS_API_KEY", "")
+    if not gmaps_key:
+        raise HTTPException(status_code=501, detail="GOOGLE_MAPS_API_KEY not configured. Use /hospitals endpoint instead.")
+
+    url = (
+        f"https://maps.googleapis.com/maps/api/place/nearbysearch/json"
+        f"?location={lat},{lng}&radius={radius}&type=hospital&key={gmaps_key}"
+    )
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "MediLink/1.0"})
+        with urllib.request.urlopen(req) as response:
+            data = json.loads(response.read().decode())
+
+        results = []
+        for place in data.get("results", [])[:15]:
+            geo = place.get("geometry", {}).get("location", {})
+            results.append({
+                "place_id": place.get("place_id"),
+                "name": place.get("name", "Unknown Hospital"),
+                "vicinity": place.get("vicinity", "Address not available"),
+                "opening_hours": place.get("opening_hours"),
+                "geometry": {"location": geo},
+                "rating": place.get("rating"),
+                "user_ratings_total": place.get("user_ratings_total"),
+            })
+        return {"results": results, "status": data.get("status")}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Google Maps error: {str(e)}")
+
+
 @router.get("/{qr_token}", response_model=EmergencyDataOut)
 def get_emergency_data(qr_token: str, db: Session = Depends(get_db)):
     qr_record = db.query(QRCode).filter(QRCode.qr_token == qr_token).first()

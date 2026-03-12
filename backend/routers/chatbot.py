@@ -64,9 +64,24 @@ EMERGENCY_SYSTEM_PROMPT = (
 
 LOCATION_REQUEST_MSG = (
     "I can arrange delivery for that! 🏪\n\n"
-    "Please share your **6-digit pincode** or **city name** "
-    "so I can check pharmacy availability in your area."
+    "To find pharmacies near you, please tap the 📍 **Share Location** button "
+    "or type your **city name** / **6-digit pincode**."
 )
+
+
+def _extract_coords_from_payload(payload) -> dict:
+    """Pull coordinates from lat/lng fields or from location string 'lat,lng'."""
+    if payload.lat and payload.lng:
+        return {"coordinates": f"{payload.lat},{payload.lng}", "city": "Your Live Location"}
+    if payload.location and "," in str(payload.location):
+        parts = str(payload.location).strip().split(",")
+        if len(parts) == 2:
+            try:
+                float(parts[0]), float(parts[1])
+                return {"coordinates": payload.location, "city": "Your Live Location"}
+            except ValueError:
+                pass
+    return {}
 
 PRESCRIPTION_MSG = (
     "⚠️ **{medicine}** is a **prescription-only medicine**.\n\n"
@@ -158,17 +173,21 @@ async def chat(payload: ChatMessage, db: Session = Depends(get_db)):
             SESSION_STATE[session_id] = {"state": "idle"}
 
     # -----------------------------------------------------------------------
-    # STATE: awaiting_location — user just gave their location
+    # STATE: awaiting_location — user gave location text OR coords in payload
     # -----------------------------------------------------------------------
     if state.get("state") == "awaiting_location":
-        location_info = extract_location_info(message)
-        # Also treat the whole message as a possible city/pincode or check live location
+        # Priority 1: live GPS from payload
+        location_info = _extract_coords_from_payload(payload)
+
+        # Priority 2: parse from message text
+        if not location_info:
+            location_info = extract_location_info(message)
+
+        # Priority 3: treat whole message as pincode or city
         if not location_info:
             import re
             if re.match(r"^\d{6}$", message.strip()):
                 location_info = {"pincode": message.strip()}
-            elif payload.location and "," in payload.location and "{" not in payload.location:
-                location_info = {"coordinates": payload.location, "city": "Your Live Location"}
             else:
                 location_info = {"city": message.strip().title()}
 
@@ -178,7 +197,6 @@ async def chat(payload: ChatMessage, db: Session = Depends(get_db)):
         available_platforms = get_pharmacy_availability(location_info)
         links = generate_order_links(medicine, available_platforms)
 
-        # Check if location resolved to anything useful
         if not available_platforms:
             reply = (
                 "I couldn't find pharmacy delivery services for that location. "
@@ -219,7 +237,28 @@ async def chat(payload: ChatMessage, db: Session = Depends(get_db)):
                 save_to_db(db, session_id, message, reply)
                 return ChatResponse(reply=reply, session_id=session_id, order_state="idle")
 
-            # Need location
+            # If live GPS coordinates are already present — skip awaiting_location entirely
+            coords_info = _extract_coords_from_payload(payload)
+            if coords_info:
+                available_platforms = get_pharmacy_availability(coords_info)
+                links = generate_order_links(medicine, available_platforms)
+                summary = build_order_summary(medicine, quantity, coords_info, links)
+                SESSION_STATE[session_id] = {
+                    "state": "awaiting_confirm",
+                    "medicine": medicine,
+                    "quantity": quantity,
+                    "location_info": coords_info,
+                    "links": links,
+                }
+                save_to_db(db, session_id, message, summary)
+                return ChatResponse(
+                    reply=summary,
+                    session_id=session_id,
+                    pharmacy_links=links,
+                    order_state="awaiting_confirm",
+                )
+
+            # No GPS — ask for location text
             SESSION_STATE[session_id] = {
                 "state": "awaiting_location",
                 "medicine": medicine,

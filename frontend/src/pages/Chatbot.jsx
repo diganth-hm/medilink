@@ -1,9 +1,9 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import axios from 'axios'
 import { v4 as uuidv4 } from 'uuid'
-import ChatWidget from '../components/ChatWidget'
 import toast from 'react-hot-toast'
-
+import { API_URL } from '../config'
+import { useUserLocation } from '../context/LocationContext'
 
 const SUGGESTIONS = [
   'I need Paracetamol 650mg, 10 tablets',
@@ -14,24 +14,7 @@ const SUGGESTIONS = [
   'How to help someone having a seizure?',
 ]
 
-const ORDER_STATE_CONFIG = {
-  awaiting_location: {
-    placeholder: 'Enter your city or 6-digit pincode (e.g. 560038)…',
-    helperText: '📍 Share your delivery location to continue',
-    helperColor: 'text-blue-400',
-  },
-  awaiting_confirm: {
-    placeholder: 'Type "confirm" to place the order, or ask to change anything…',
-    helperText: '🛒 Review your order above and type confirm to proceed',
-    helperColor: 'text-green-400',
-  },
-  idle: {
-    placeholder: 'Ask a medical question or order a medicine…',
-    helperText: null,
-  },
-}
-
-// ── Delivery option card (outside component to avoid remount) ──────────────
+// ── Delivery option card ──────────────────────────────────────────────────
 function DeliveryCard({ link }) {
   return (
     <a
@@ -56,7 +39,7 @@ function DeliveryCard({ link }) {
   )
 }
 
-// ── Confirm button ─────────────────────────────────────────────────────────
+// ── Confirm button ────────────────────────────────────────────────────────
 function ConfirmButton({ onConfirm, loading }) {
   return (
     <button
@@ -69,7 +52,7 @@ function ConfirmButton({ onConfirm, loading }) {
   )
 }
 
-// ── Message bubble ─────────────────────────────────────────────────────────
+// ── Message bubble ────────────────────────────────────────────────────────
 function MessageBubble({ msg, onConfirm, loading, orderState }) {
   const isUser = msg.role === 'user'
   return (
@@ -84,14 +67,12 @@ function MessageBubble({ msg, onConfirm, loading, orderState }) {
           ? 'bg-blue-600 text-white rounded-tr-sm max-w-lg whitespace-pre-wrap'
           : 'bg-slate-800 text-slate-100 rounded-tl-sm max-w-lg'
       }`}>
-        {/* Render markdown-style bold */}
         <span dangerouslySetInnerHTML={{
           __html: msg.content
             .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
             .replace(/\n/g, '<br/>')
         }} />
 
-        {/* Delivery options */}
         {msg.pharmacy_links && msg.pharmacy_links.length > 0 && (
           <div className="mt-3 space-y-2">
             {msg.pharmacy_links.map((link, idx) => (
@@ -103,7 +84,6 @@ function MessageBubble({ msg, onConfirm, loading, orderState }) {
           </div>
         )}
 
-        {/* Order confirmed badge */}
         {msg.order_state === 'confirmed' && (
           <div className="mt-3 flex items-center gap-2 bg-green-500/15 border border-green-500/30 rounded-xl px-3 py-2">
             <span className="text-green-400 text-lg">🎉</span>
@@ -115,11 +95,13 @@ function MessageBubble({ msg, onConfirm, loading, orderState }) {
   )
 }
 
-// ── Main Chatbot page ──────────────────────────────────────────────────────
+// ── Main Chatbot page ─────────────────────────────────────────────────────
 export default function Chatbot() {
+  const { coords, address, locationLoading } = useUserLocation()
+
   const [messages, setMessages] = useState([{
     role: 'assistant',
-    content: "Hello! I'm MediLink AI 🤖\n\nI can help you with:\n• **Medical questions** and emergency guidance\n• **Order medicines** from top pharmacy delivery services\n\nTry: *\"I need Paracetamol 650mg, 10 tablets\"*",
+    content: "Hello! I'm MediLink AI 🤖\n\nI can help you with:\n• **Medical questions** and emergency guidance\n• **Order medicines** delivered to your location\n\nTry: *\"I need Paracetamol 650mg, 10 tablets\"*",
     pharmacy_links: null,
     order_state: 'idle',
   }])
@@ -133,27 +115,52 @@ export default function Chatbot() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  const sendMessage = useCallback(async (content) => {
+  // Build location payload: always include live coords when available
+  const buildLocationPayload = useCallback(() => {
+    if (coords) {
+      return `${coords.lat},${coords.lng}`
+    }
+    return null
+  }, [coords])
+
+  const sendMessage = useCallback(async (content, extraLocation) => {
     const msg = (content || input).trim()
     if (!msg || loading) return
     setInput('')
     setMessages(prev => [...prev, { role: 'user', content: msg }])
     setLoading(true)
 
-    try {
-      let locationData = null
-      if (msg.toLowerCase().includes('order') || orderState === 'awaiting_location') {
-        // Optionally auto-request location if not already provided
-      }
+    // Always attach live location to every message
+    const locationStr = extraLocation || buildLocationPayload()
 
-      const res = await axios.post('/chatbot/chat', {
+    try {
+      const res = await axios.post(`${API_URL}/chatbot/chat`, {
         message: msg,
         session_id: sessionId,
-        location: window.currentLocation || null
+        location: locationStr,
+        lat: coords ? coords.lat : null,
+        lng: coords ? coords.lng : null,
       })
 
       const newState = res.data.order_state || 'idle'
       setOrderState(newState)
+
+      // If backend still asks for location (no coords were available before), auto-send now
+      if (newState === 'awaiting_location' && coords) {
+        // Silently reply with coords so user never sees pincode prompt
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: '📍 Using your live location for delivery...',
+          pharmacy_links: null,
+          order_state: 'awaiting_location',
+        }])
+        setLoading(false)
+        // Give backend a moment then auto-reply with coordinates
+        setTimeout(() => {
+          sendMessage(`${coords.lat},${coords.lng}`, `${coords.lat},${coords.lng}`)
+        }, 500)
+        return
+      }
 
       setMessages(prev => [...prev, {
         role: 'assistant',
@@ -171,28 +178,15 @@ export default function Chatbot() {
     } finally {
       setLoading(false)
     }
-  }, [input, loading, sessionId])
+  }, [input, loading, sessionId, coords, buildLocationPayload])
 
   const handleConfirm = useCallback(() => {
     sendMessage('confirm')
   }, [sendMessage])
 
-  const shareLocation = () => {
-    if (!navigator.geolocation) {
-      toast.error('Geolocation not supported')
-      return
-    }
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        window.currentLocation = `${pos.coords.latitude},${pos.coords.longitude}`
-        toast.success('Location shared with AI')
-        sendMessage(`My current location is ${pos.coords.latitude}, ${pos.coords.longitude}`)
-      },
-      () => toast.error('Failed to get location')
-    )
-  }
-
-  const config = ORDER_STATE_CONFIG[orderState] || ORDER_STATE_CONFIG.idle
+  const placeholder = orderState === 'awaiting_confirm'
+    ? 'Type "confirm" to place the order…'
+    : 'Ask a medical question or order a medicine…'
 
   return (
     <div className="min-h-screen pt-16 flex flex-col">
@@ -205,9 +199,25 @@ export default function Chatbot() {
           </div>
           <div>
             <h1 className="text-2xl font-bold text-white">MediLink AI</h1>
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-              <span className="text-green-400 text-sm">Online · Medical Assistant + Medicine Delivery</span>
+            <div className="flex items-center gap-3 flex-wrap">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+                <span className="text-green-400 text-sm">Online · Medical Assistant</span>
+              </div>
+              {/* Live location badge */}
+              {locationLoading ? (
+                <span className="text-xs text-slate-500 flex items-center gap-1">
+                  <div className="w-2 h-2 bg-slate-500 rounded-full animate-pulse" /> Locating...
+                </span>
+              ) : coords ? (
+                <span className="text-xs text-blue-400 flex items-center gap-1 bg-blue-500/10 px-2 py-0.5 rounded-full border border-blue-500/20">
+                  📍 {address || `${coords.lat.toFixed(3)}, ${coords.lng.toFixed(3)}`}
+                </span>
+              ) : (
+                <span className="text-xs text-yellow-500 flex items-center gap-1">
+                  ⚠️ Location unavailable
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -254,13 +264,22 @@ export default function Chatbot() {
           <div ref={messagesEndRef} />
         </div>
 
+        {/* Location warning if unavailable */}
+        {!coords && !locationLoading && (
+          <div className="mb-2 px-3 py-2 bg-yellow-500/10 border border-yellow-500/30 rounded-xl text-xs text-yellow-400 flex items-center gap-2">
+            ⚠️ Location access is disabled. Medicine ordering will ask for your city name.
+          </div>
+        )}
+
+        {/* Confirm helper */}
+        {orderState === 'awaiting_confirm' && (
+          <div className="mb-2 px-2 text-xs flex items-center gap-2 text-green-400">
+            🛒 Review your order above and type confirm to proceed
+          </div>
+        )}
+
         {/* Input area */}
         <div className="glass rounded-2xl p-3 border border-slate-700/50">
-          {config.helperText && (
-            <div className={`mb-2 px-2 text-xs flex items-center gap-2 ${config.helperColor}`}>
-              <span>{config.helperText}</span>
-            </div>
-          )}
           <div className="flex gap-3 items-end">
             <textarea
               id="chatbot-input"
@@ -269,20 +288,10 @@ export default function Chatbot() {
               onKeyDown={e => {
                 if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage() }
               }}
-              placeholder={config.placeholder}
+              placeholder={placeholder}
               rows={2}
               className="flex-1 bg-transparent text-white placeholder-slate-500 focus:outline-none text-sm resize-none"
             />
-            <button
-              onClick={shareLocation}
-              title="Share Live Location"
-              className="w-10 h-10 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl flex items-center justify-center transition-colors flex-shrink-0 text-blue-400"
-            >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-            </button>
             <button
               id="chatbot-send"
               onClick={() => sendMessage()}
