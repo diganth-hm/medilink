@@ -73,6 +73,15 @@ async def lifespan(app: FastAPI):
     # Ensure upload directory exists
     os.makedirs("uploads", exist_ok=True)
     try:
+        # Check required env vars
+        required = ["SMTP_USER", "SMTP_PASS", "TWILIO_SID", "TWILIO_TOKEN", "TWILIO_FROM"]
+        missing = [k for k in required if not os.getenv(k)]
+        if missing:
+            logger.warning(f"CRITICAL: Missing environment variables for OTP services: {missing}")
+            # In strict production, you might raise an error here to prevent startup
+            if os.getenv("ENVIRONMENT", "development").lower() == "production":
+                raise RuntimeError(f"Missing required production env vars: {missing}")
+
         # Ensure database tables are created
         Base.metadata.create_all(bind=engine)
         # Run simple migrations for existing databases
@@ -80,7 +89,7 @@ async def lifespan(app: FastAPI):
         # Seed database
         seed_database()
     except Exception as e:
-        print(f"Startup error: {e}")
+        logger.error(f"Startup error: {e}")
     yield
 
 app = FastAPI(

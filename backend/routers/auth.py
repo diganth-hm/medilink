@@ -109,16 +109,12 @@ def send_otp_route(request: OTPRequest, db: Session = Depends(get_db)):
         "expires_in_seconds": expiry_min * 60,
     }
 
-    # In dev mode (no real delivery), hint in the response
+    # Raise error if real delivery failed (never fall back silently in production)
     if not sent:
-        response["dev_note"] = (
-            "No SMS/Email provider configured. "
-            "Check server logs for the OTP code (search for 'OTP CODE')."
+        raise HTTPException(
+            status_code=500,
+            detail="Email or SMS service not configured. Please contact support."
         )
-        # Also return otp in dev mode only (remove in strict production)
-        if os.getenv("ENVIRONMENT", "development").lower() == "development":
-            response["dev_otp"] = otp_code
-            logger.warning("[DEV] Returning OTP in response body — disable in production!")
 
     if user is None:
         # Don't expose that user doesn't exist, but log it
