@@ -7,24 +7,57 @@ import ChatWidget from '../components/ChatWidget'
 export default function Dashboard() {
   const { user } = useAuth()
   const [profile, setProfile] = useState(null)
+  const [doctorProfile, setDoctorProfile] = useState(null)
   const [qrInfo, setQrInfo] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [uploading, setUploading] = useState(false)
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [profRes, qrRes] = await Promise.allSettled([
+        const calls = [
           axios.get('/patient/profile'),
-          axios.get('/qrcode/my-qr-info'),
-        ])
-        if (profRes.status === 'fulfilled') setProfile(profRes.value.data)
-        if (qrRes.status === 'fulfilled') setQrInfo(qrRes.value.data)
+          axios.get('/qrcode/my-qr-info')
+        ]
+        
+        if (user?.role === 'doctor') {
+          calls.push(axios.get('/doctor/profile'))
+        }
+
+        const results = await Promise.allSettled(calls)
+        
+        if (results[0].status === 'fulfilled') setProfile(results[0].value.data)
+        if (results[1].status === 'fulfilled') setQrInfo(results[1].value.data)
+        if (user?.role === 'doctor' && results[2]?.status === 'fulfilled') {
+          setDoctorProfile(results[2].value.data)
+        }
       } finally {
         setLoading(false)
       }
     }
     fetchData()
-  }, [])
+  }, [user])
+
+  const handleFileUpload = async (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+
+    setUploading(true)
+    const formData = new FormData()
+    formData.append('file', file)
+
+    try {
+      await axios.post('/doctor/upload-license', formData)
+      toast.success('License uploaded! Verification pending.')
+      // Refresh doctor profile
+      const res = await axios.get('/doctor/profile')
+      setDoctorProfile(res.data)
+    } catch (err) {
+      toast.error('Upload failed')
+    } finally {
+      setUploading(false)
+    }
+  }
 
   const profileFields = profile ? [
     'blood_group', 'allergies', 'current_medications', 'chronic_conditions',
@@ -82,6 +115,51 @@ export default function Dashboard() {
         </div>
         <p className="text-slate-400 mt-2 ml-15">Manage your emergency medical profile</p>
       </div>
+
+      {user?.role === 'doctor' && (
+        <div className={`mb-8 p-6 rounded-3xl border ${
+          doctorProfile?.verification_status === 'approved' 
+            ? 'bg-green-500/10 border-green-500/20 text-green-400' 
+            : doctorProfile?.verification_status === 'rejected'
+            ? 'bg-red-500/10 border-red-500/20 text-red-400'
+            : 'bg-yellow-500/10 border-yellow-500/20 text-yellow-400'
+        } flex flex-col md:flex-row md:items-center justify-between gap-4`}>
+          <div className="flex items-center gap-4">
+            <span className="text-3xl">
+              {doctorProfile?.verification_status === 'approved' ? '✅' : '⏳'}
+            </span>
+            <div>
+              <h3 className="font-bold text-lg">Verification Status: {doctorProfile?.verification_status?.toUpperCase() || 'NOT STARTED'}</h3>
+              <p className="text-sm opacity-80">
+                {doctorProfile?.verification_status === 'approved' 
+                  ? 'Your medical license is verified. You have full access to patient emergency records.' 
+                  : 'Please upload your medical license to access full patient data.'}
+              </p>
+            </div>
+          </div>
+          {doctorProfile?.verification_status !== 'approved' && (
+            <label className="cursor-pointer bg-white/10 hover:bg-white/20 px-6 py-2.5 rounded-xl font-bold transition-all whitespace-nowrap text-center">
+               {uploading ? 'Uploading...' : 'Upload License (PDF/JPG)'}
+               <input type="file" className="hidden" onChange={handleFileUpload} accept=".pdf,.jpg,.jpeg,.png" disabled={uploading} />
+            </label>
+          )}
+        </div>
+      )}
+
+      {user?.role === 'hospital' && (
+        <div className="mb-8 p-6 rounded-3xl border bg-blue-500/10 border-blue-500/20 text-blue-400 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <span className="text-3xl">🏁</span>
+            <div>
+              <h3 className="font-bold text-lg">Verification Management</h3>
+              <p className="text-sm opacity-80">You have administrative rights to verify medical professionals and fundraising applications.</p>
+            </div>
+          </div>
+          <Link to="/doctor-verification" className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2.5 rounded-xl font-bold transition-all whitespace-nowrap text-center">
+            Review Applications →
+          </Link>
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">

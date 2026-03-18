@@ -110,17 +110,24 @@ class DoctorProfile(Base):
     license_number = Column(String(50), unique=True)
     hospital_name = Column(String(200))
     contact_details = Column(Text)
+    
+    # Verification fields
+    verification_doc_path = Column(String(500), nullable=True) # Path to uploaded license/ID
+    verification_status = Column(String(20), default="pending") # pending | approved | rejected
+    verified_at = Column(DateTime, nullable=True)
 
     user = relationship("User", back_populates="doctor_profile")
 
 
-class OTPRecord(Base):
-    __tablename__ = "otp_records"
+class OTPToken(Base):
+    __tablename__ = "otp_tokens"
 
     id = Column(Integer, primary_key=True, index=True)
     identifier = Column(String(200), index=True)  # email or phone
     otp_code = Column(String(100))  # bcrypt hash of the OTP (60 chars + margin)
+    channel = Column(String(20))    # email or sms
     expires_at = Column(DateTime)
+    used = Column(Boolean, default=False)
     attempts = Column(Integer, default=0)
 
 

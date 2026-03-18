@@ -2,7 +2,7 @@ import os
 import uuid
 import shutil
 from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Response
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from database import get_db
@@ -10,6 +10,7 @@ from models import MedicalRecord, User, DoctorProfile
 from schemas import MedicalRecordOut
 from auth import get_current_user
 from typing import List, Optional
+from services.encryption_service import encrypt_data, decrypt_data
 
 router = APIRouter()
 
@@ -68,14 +69,18 @@ async def upload_record(
     if file_size > MAX_FILE_SIZE_MB * 1024 * 1024:
         raise HTTPException(status_code=413, detail=f"File too large. Max size: {MAX_FILE_SIZE_MB}MB")
 
+    # Encrypt bytes
+    encrypted_bytes = encrypt_data(file_bytes, current_user_id)
+    file_size_encrypted = len(encrypted_bytes)
+
     # Generate unique filename preserving extension
     ext = os.path.splitext(file.filename or "file")[1] or ".bin"
     unique_name = f"{current_user_id}_{uuid.uuid4().hex}{ext}"
     file_path = os.path.join(UPLOAD_DIR, unique_name)
 
-    # Write file to disk
+    # Write encrypted file to disk
     with open(file_path, "wb") as f:
-        f.write(file_bytes)
+        f.write(encrypted_bytes)
 
     # Resolve issuing doctor if code provided
     issuing_doctor_id = None
@@ -144,10 +149,28 @@ def download_record(
     if not os.path.exists(record.file_path):
         raise HTTPException(status_code=404, detail="File not found on server")
 
-    return FileResponse(
-        path=record.file_path,
-        filename=record.original_filename or f"record_{record_id}",
-        media_type="application/octet-stream",
+    # Read encrypted file
+    with open(record.file_path, "rb") as f:
+        encrypted_bytes = f.read()
+        
+    # Decrypt bytes using the record owner's ID
+    try:
+        decrypted_bytes = decrypt_data(encrypted_bytes, record.user_id)
+    except Exception:
+        raise HTTPException(status_code=500, detail="Decryption failed. Data might be corrupted or key mismatch.")
+
+    # Infer media type
+    import mimetypes
+    media_type, _ = mimetypes.guess_type(record.original_filename or "")
+    if not media_type:
+        media_type = "application/octet-stream"
+
+    return Response(
+        content=decrypted_bytes,
+        media_type=media_type,
+        headers={
+            "Content-Disposition": f'attachment; filename="{record.original_filename or f"record_{record_id}"}"'
+        }
     )
 
 

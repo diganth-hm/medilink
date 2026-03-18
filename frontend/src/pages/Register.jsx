@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import axios from 'axios'
 import { useAuth } from '../context/AuthContext'
 import toast from 'react-hot-toast'
+import OTPModal from '../components/OTPModal'
 
 const ROLES = [
   { value: 'patient', icon: '🤒', label: 'Patient', desc: 'Manage your medical profile & QR' },
@@ -14,6 +15,7 @@ const ROLES = [
 export default function Register() {
   const [form, setForm] = useState({ name: '', email: '', password: '', role: 'patient' })
   const [loading, setLoading] = useState(false)
+  const [showOTP, setShowOTP] = useState(false)
   const { login } = useAuth()
   const navigate = useNavigate()
 
@@ -23,12 +25,17 @@ export default function Register() {
       toast.error('Password must be at least 6 characters')
       return
     }
+    // Show OTP to verify identity BEFORE registering
+    setShowOTP(true)
+  }
+
+  const handleOTPVerifySuccess = async () => {
+    setShowOTP(false)
     setLoading(true)
     try {
-      await axios.post('/auth/register', form)
-      // Auto-login after register
-      const loginRes = await axios.post('/auth/login', { email: form.email, password: form.password })
-      login(loginRes.data.access_token, loginRes.data.user)
+      const res = await axios.post('/auth/register', form)
+      // registration now returns login token
+      login(res.data.access_token, res.data.user)
       toast.success('Welcome to MediLink! 🎉')
       navigate('/dashboard')
     } catch (err) {
@@ -42,7 +49,7 @@ export default function Register() {
     <div className="min-h-screen flex items-center justify-center px-4 pt-16 pb-10">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-xl">
+          <div className="w-16 h-16 bg-gradient-to-br from-primary to-slate-800 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-xl">
             <svg className="w-9 h-9 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
             </svg>
@@ -56,7 +63,6 @@ export default function Register() {
             <div>
               <label className="label">Full Name</label>
               <input
-                id="reg-name"
                 type="text"
                 className="input"
                 placeholder="Your full name"
@@ -66,12 +72,11 @@ export default function Register() {
               />
             </div>
             <div>
-              <label className="label">Email Address</label>
+              <label className="label">Email OR Mobile Number</label>
               <input
-                id="reg-email"
-                type="email"
+                type="text"
                 className="input"
-                placeholder="you@example.com"
+                placeholder="you@example.com / phone"
                 value={form.email}
                 onChange={e => setForm({ ...form, email: e.target.value })}
                 required
@@ -80,7 +85,6 @@ export default function Register() {
             <div>
               <label className="label">Password</label>
               <input
-                id="reg-password"
                 type="password"
                 className="input"
                 placeholder="Minimum 6 characters"
@@ -101,8 +105,8 @@ export default function Register() {
                     onClick={() => setForm({ ...form, role: r.value })}
                     className={`p-3 rounded-xl border text-left transition-all duration-200 ${
                       form.role === r.value
-                        ? 'border-blue-500 bg-blue-500/15 text-white'
-                        : 'border-slate-700 hover:border-slate-500 text-slate-400'
+                        ? 'border-primary bg-primary/15 text-white'
+                        : 'border-border hover:border-slate-500 text-slate-400'
                     }`}
                   >
                     <div className="text-xl mb-1">{r.icon}</div>
@@ -114,7 +118,6 @@ export default function Register() {
             </div>
 
             <button
-              id="reg-submit"
               type="submit"
               disabled={loading}
               className="btn-primary w-full py-3.5 flex items-center justify-center gap-2 disabled:opacity-50"
@@ -122,18 +125,26 @@ export default function Register() {
               {loading ? (
                 <>
                   <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  Creating Account...
+                  Continuing...
                 </>
-              ) : 'Create Account'}
+              ) : 'Continue'}
             </button>
           </form>
 
           <p className="text-center text-slate-400 text-sm mt-6">
             Already have an account?{' '}
-            <Link to="/login" className="text-blue-400 hover:text-blue-300 font-medium">Sign in</Link>
+            <Link to="/login" className="text-primary hover:text-white font-medium">Sign in</Link>
           </p>
         </div>
       </div>
+      
+      <OTPModal
+        isOpen={showOTP}
+        identifier={form.email}
+        isRegistration={true}
+        onVerifySuccess={handleOTPVerifySuccess}
+        onClose={() => setShowOTP(false)}
+      />
     </div>
   )
 }

@@ -1,10 +1,13 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
 from database import get_db
 from models import QRCode, User, MedicalProfile, MedicalRecord, DoctorProfile
 from schemas import MedicalRecordOut, DoctorProfileCreate, DoctorProfileOut
 from auth import get_current_user
-from typing import List
+from typing import List, Optional
+import os
+import uuid
+from datetime import datetime
 
 router = APIRouter()
 
@@ -38,6 +41,84 @@ def update_doctor_profile(
     db.commit()
     db.refresh(profile)
     return profile
+
+
+@router.post("/upload-license")
+async def upload_doctor_license(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user_id: int = Depends(get_current_user),
+):
+    user = _require_doctor(current_user_id, db)
+    
+    # Ensure directory exists
+    UPLOAD_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "uploads", "verification")
+    os.makedirs(UPLOAD_DIR, exist_ok=True)
+    
+    # Save file
+    ext = os.path.splitext(file.filename or "license.pdf")[1]
+    filename = f"doc_{current_user_id}_{uuid.uuid4().hex}{ext}"
+    file_path = os.path.join(UPLOAD_DIR, filename)
+    
+    with open(file_path, "wb") as f:
+        f.write(await file.read())
+        
+    # Update profile
+    profile = db.query(DoctorProfile).filter(DoctorProfile.user_id == user.id).first()
+    if not profile:
+        profile = DoctorProfile(user_id=user.id)
+        db.add(profile)
+        
+    profile.verification_doc_path = file_path
+    profile.verification_status = "pending"
+    db.commit()
+    
+    return {"message": "License uploaded successfully. Verification pending.", "path": file_path}
+
+
+@router.post("/admin/verify/{doctor_id}")
+def verify_doctor_status(
+    doctor_id: int,
+    status: str, # approved | rejected
+    db: Session = Depends(get_db),
+    current_user_id: int = Depends(get_current_user),
+):
+    # Require admin role (using hospital or a special admin user for now)
+    admin = db.query(User).filter(User.id == current_user_id).first()
+    if admin.role not in ["hospital", "admin"]:
+         raise HTTPException(status_code=403, detail="Only hospitals or admins can verify doctors")
+         
+    profile = db.query(DoctorProfile).filter(DoctorProfile.user_id == doctor_id).first()
+    if not profile:
+        raise HTTPException(status_code=404, detail="Doctor profile not found")
+        
+    profile.verification_status = status
+    if status == "approved":
+        profile.verified_at = datetime.utcnow()
+        # Also update the user's is_verified flag
+        user = db.query(User).filter(User.id == doctor_id).first()
+        if user:
+            user.is_verified = True
+    else:
+        user = db.query(User).filter(User.id == doctor_id).first()
+        if user:
+            user.is_verified = False
+        
+    db.commit()
+    return {"message": f"Doctor status updated to {status}"}
+
+
+@router.get("/admin/pending", response_model=List[DoctorProfileOut])
+def get_pending_verifications(
+    db: Session = Depends(get_db),
+    current_user_id: int = Depends(get_current_user),
+):
+    # Require admin role
+    admin = db.query(User).filter(User.id == current_user_id).first()
+    if admin.role not in ["hospital", "admin"]:
+         raise HTTPException(status_code=403, detail="Only hospitals or admins can access this data")
+         
+    return db.query(DoctorProfile).filter(DoctorProfile.verification_status == "pending").all()
 
 
 @router.get("/profile", response_model=DoctorProfileOut)

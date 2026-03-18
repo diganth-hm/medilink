@@ -1,0 +1,11 @@
+{
+  "source_directories": [
+    "backend"
+  ],
+  "search_path": [
+    "backend/medilink_venv/Lib/site-packages"
+  ],
+  "ignore_all_errors": [
+    "backend/main.py"
+  ]
+}

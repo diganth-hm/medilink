@@ -1,0 +1,10 @@
+{
+    "venvPath": "backend",
+    "venv": "medilink_venv",
+    "include": ["backend"],
+    "executionEnvironments": [
+        {
+            "root": "backend"
+        }
+    ]
+}

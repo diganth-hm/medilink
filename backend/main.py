@@ -4,7 +4,16 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 from contextlib import asynccontextmanager
 import os
+import sys
 import logging
+from dotenv import load_dotenv
+
+# Ensure the backend directory is in sys.path
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+if BASE_DIR not in sys.path:
+    sys.path.append(BASE_DIR)
+
+load_dotenv()
 
 from database import engine, Base, get_db, SessionLocal
 import models

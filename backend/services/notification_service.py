@@ -6,16 +6,16 @@ Priority order for each channel:
   SMS   : Twilio           → Fast2SMS → DEV FALLBACK (log only)
 
 Required environment variables (set in Render / .env):
-  SMTP_EMAIL       — sender Gmail address (e.g. yourapp@gmail.com)
-  SMTP_PASSWORD    — Gmail App Password (not account password)
+  SMTP_USER       — sender Gmail address (e.g. yourapp@gmail.com)
+  SMTP_PASS       — Gmail App Password (not account password)
   SMTP_HOST        — optional, default smtp.gmail.com
   SMTP_PORT        — optional, default 587
 
   SENDGRID_API_KEY — optional SendGrid fallback
 
-  TWILIO_ACCOUNT_SID
-  TWILIO_AUTH_TOKEN
-  TWILIO_FROM_NUMBER  — E.164 format, e.g. +15005550006
+  TWILIO_SID
+  TWILIO_TOKEN
+  TWILIO_FROM     — E.164 format, e.g. +15005550006
 
   FAST2SMS_API_KEY    — Fast2SMS API key (for Indian numbers)
 
@@ -34,16 +34,16 @@ logger = logging.getLogger("medilink.notification")
 # ---------------------------------------------------------------------------
 # Environment configuration
 # ---------------------------------------------------------------------------
-SMTP_EMAIL = os.getenv("SMTP_EMAIL", "")
-SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
+SMTP_EMAIL = os.getenv("SMTP_USER", "")
+SMTP_PASSWORD = os.getenv("SMTP_PASS", "")
 SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com")
 SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
 
 SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY", "")
 
-TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID", "")
-TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN", "")
-TWILIO_FROM_NUMBER = os.getenv("TWILIO_FROM_NUMBER", "")
+TWILIO_ACCOUNT_SID = os.getenv("TWILIO_SID", "")
+TWILIO_AUTH_TOKEN = os.getenv("TWILIO_TOKEN", "")
+TWILIO_FROM_NUMBER = os.getenv("TWILIO_FROM", "")
 
 FAST2SMS_API_KEY = os.getenv("FAST2SMS_API_KEY", "")
 

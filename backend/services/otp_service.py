@@ -15,7 +15,7 @@ import os
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 from passlib.context import CryptContext
-from models import OTPRecord
+from models import OTPToken
 
 logger = logging.getLogger("medilink.otp")
 
@@ -38,7 +38,7 @@ def generate_otp(length: int = 6) -> str:
     return "".join(random.choices(string.digits, k=length))
 
 
-def create_otp(db: Session, identifier: str) -> str:
+def create_otp(db: Session, identifier: str, channel: str) -> str:
     """
     Create a new OTP for the given identifier (email or phone).
     - Clears any existing OTPs for the identifier.
@@ -46,22 +46,24 @@ def create_otp(db: Session, identifier: str) -> str:
     - Returns the raw OTP (to be sent to the user).
     """
     # Remove stale records
-    db.query(OTPRecord).filter(OTPRecord.identifier == identifier).delete()
+    db.query(OTPToken).filter(OTPToken.identifier == identifier).delete()
     db.commit()
 
     otp_code = generate_otp()
     expires_at = datetime.utcnow() + timedelta(minutes=OTP_EXPIRY_MINUTES)
 
-    db_otp = OTPRecord(
+    db_otp = OTPToken(
         identifier=identifier,
         otp_code=_hash_otp(otp_code),   # store hash, not plain text
+        channel=channel,
         expires_at=expires_at,
+        used=False,
         attempts=0,
     )
     db.add(db_otp)
     db.commit()
 
-    logger.info("[OTP] Generated OTP for %s (expires in %d min)", identifier, OTP_EXPIRY_MINUTES)
+    logger.info("[OTP] Generated OTP for %s on channel %s (expires in %d min)", identifier, channel, OTP_EXPIRY_MINUTES)
     return otp_code   # return plain code so notification_service can send it
 
 
@@ -71,13 +73,13 @@ def verify_otp(db: Session, identifier: str, otp_code: str) -> bool:
     - Checks expiry.
     - Checks attempt limit.
     - Verifies bcrypt hash.
-    - Deletes record on success.
+    - Marks as used on success.
     - Increments attempt counter on failure.
     """
-    otp_record = db.query(OTPRecord).filter(OTPRecord.identifier == identifier).first()
+    otp_record = db.query(OTPToken).filter(OTPToken.identifier == identifier).first()
 
-    if not otp_record:
-        logger.warning("[OTP] Verification attempt for %s — no record found", identifier)
+    if not otp_record or otp_record.used:
+        logger.warning("[OTP] Verification attempt for %s — no valid active record found", identifier)
         return False
 
     if datetime.utcnow() > otp_record.expires_at:
@@ -91,7 +93,7 @@ def verify_otp(db: Session, identifier: str, otp_code: str) -> bool:
         return False
 
     if _verify_otp_hash(otp_code, otp_record.otp_code):
-        db.delete(otp_record)
+        otp_record.used = True
         db.commit()
         logger.info("[OTP] OTP verified successfully for %s", identifier)
         return True
@@ -106,8 +108,8 @@ def verify_otp(db: Session, identifier: str, otp_code: str) -> bool:
 
 
 def get_otp_remaining_seconds(db: Session, identifier: str) -> int:
-    """Return seconds remaining until OTP expires, or 0 if not found/expired."""
-    record = db.query(OTPRecord).filter(OTPRecord.identifier == identifier).first()
+    """Return seconds remaining until OTP expires, or 0 if not found/expired/used."""
+    record = db.query(OTPToken).filter(OTPToken.identifier == identifier, OTPToken.used == False).first()
     if not record:
         return 0
     remaining = (record.expires_at - datetime.utcnow()).total_seconds()

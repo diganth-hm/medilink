@@ -35,3 +35,11 @@ def get_my_applications(
 ):
     apps = db.query(FundraisingApplication).filter(FundraisingApplication.user_id == current_user_id).all()
     return apps
+
+
+@router.get("/approved", response_model=List[FundraisingApplicationOut])
+def get_approved_applications(
+    db: Session = Depends(get_db)
+):
+    """Public endpoint to see all verified fundraising campaigns."""
+    return db.query(FundraisingApplication).filter(FundraisingApplication.status == "verified").all()

@@ -5,7 +5,10 @@ from database import get_db
 from sqlalchemy.orm import Session
 import os
 import sys
+import logging
 from dotenv import load_dotenv
+
+logger = logging.getLogger("medilink.chatbot")
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from services.pharmacy_service import (
@@ -44,22 +47,72 @@ SESSION_STATE: dict = {}
 # }
 
 # ---------------------------------------------------------------------------
+# Medical Knowledge Base (Protocols)
+# ---------------------------------------------------------------------------
+
+MEDICAL_PROTOCOLS = {
+    "cpr": (
+        "CPR (Cardiopulmonary Resuscitation):\n"
+        "1. Check the scene for safety.\n"
+        "2. Check for responsiveness. If no response, call emergency services (112) immediately.\n"
+        "3. Place the person on their back. Open the airway.\n"
+        "4. Check for breathing. If not breathing, start chest compressions.\n"
+        "5. Push hard, push fast (100-120 compressions per minute) in the center of the chest.\n"
+        "6. If trained, give 2 rescue breaths after every 30 compressions."
+    ),
+    "choking": (
+        "Choking (Heimlich Maneuver):\n"
+        "1. Ask 'Are you choking?'.\n"
+        "2. Perform 5 back blows between shoulder blades.\n"
+        "3. Perform 5 abdominal thrusts (Heimlich maneuver).\n"
+        "4. Repeat 5 and 5 until the object is forced out or the person becomes unconscious."
+    ),
+    "bleeding": (
+        "Bleeding Control:\n"
+        "1. Apply direct pressure to the wound with a clean cloth.\n"
+        "2. Keep pressure until the bleeding stops.\n"
+        "3. Elevate the limb if possible.\n"
+        "4. Do not remove the cloth if it becomes soaked; add more on top."
+    ),
+    "burns": (
+        "Burn Treatment:\n"
+        "1. Cool the burn under running cool (not cold) water for at least 10-20 minutes.\n"
+        "2. Remove any jewellery or clothing near the burn area before it swells.\n"
+        "3. Cover with a sterile gauze or clean cloth. Do not apply butter or ointments."
+    ),
+    "stroke": (
+        "Stroke (B.E. F.A.S.T):\n"
+        "• Balance: Sudden loss of balance?\n"
+        "• Eyes: Sudden blurred or double vision?\n"
+        "• Face: One side of the face drooping?\n"
+        "• Arms: One arm drifting downward when raised?\n"
+        "• Speech: Slurred or strange speech?\n"
+        "• Time: Call 112 immediately if any of these are present."
+    )
+}
+
+# ---------------------------------------------------------------------------
 # System prompts
 # ---------------------------------------------------------------------------
 
 NORMAL_SYSTEM_PROMPT = (
-    "You are MediLink AI, a helpful medical assistant specialising in "
-    "emergency medicine, medication information, and medicine delivery. "
-    "You can help users order medicines through pharmacy delivery services. "
-    "Provide clear, calm, and accurate guidance. Always recommend consulting a doctor "
-    "for serious conditions. Keep responses concise and actionable."
+    "You are MediLink AI, a premium medical assistant specializing in "
+    "emergency medicine, clinical guidance, and pharmaceutical logistics. "
+    "Your tone is professional, empathetic, and authoritative yet calm. "
+    "Structure your responses using clear headers and bullet points where appropriate. "
+    "Always prioritize life-saving advice and mention consulting a professional. "
+    "If medicine is requested, you facilitate the ordering flow seamlessly."
 )
 
 EMERGENCY_SYSTEM_PROMPT = (
-    "You are MediLink AI assisting in a live medical emergency. The patient's "
-    "profile is: {patient_context}. Use this information to give specific, "
-    "actionable guidance. Warn about allergies and drug interactions. Keep "
-    "responses brief and clear. Prioritize life-saving information."
+    "You are MediLink AI in EMERGENCY MODE. You are assisting a live life-critical event. "
+    "Patient Context: {patient_context}.\n"
+    "Guidelines:\n"
+    "- Be extremely concise and directive.\n"
+    "- Use bold text for critical actions.\n"
+    "- Check for allergies: {patient_allergies}.\n"
+    "- Mention specific medications/conditions from context if relevant.\n"
+    "- STAY CALM and keep the user focused."
 )
 
 LOCATION_REQUEST_MSG = (
@@ -283,12 +336,29 @@ async def chat(payload: ChatMessage, db: Session = Depends(get_db)):
 
 async def _groq_response(payload: ChatMessage, db: Session, emergency: bool = False) -> ChatResponse:
     try:
+        # Detect relevant protocols to inject
+        msg_lower = payload.message.lower()
+        protocols_to_inject = []
+        for key, protocol in MEDICAL_PROTOCOLS.items():
+            if key in msg_lower:
+                protocols_to_inject.append(protocol)
+        
+        protocol_context = "\n\nCRITICAL PROTOCOLS TO FOLLOW:\n" + "\n---\n".join(protocols_to_inject) if protocols_to_inject else ""
+
         if payload.patient_context or emergency:
+            # Extract allergies if possible from context string
+            import re
+            allergies = "None reported"
+            match = re.search(r"Allergies:\s*(.*?)(?:\n|$)", payload.patient_context or "")
+            if match:
+                allergies = match.group(1)
+
             system_prompt = EMERGENCY_SYSTEM_PROMPT.format(
-                patient_context=payload.patient_context or "unknown"
-            )
+                patient_context=payload.patient_context or "unknown",
+                patient_allergies=allergies
+            ) + protocol_context
         else:
-            system_prompt = NORMAL_SYSTEM_PROMPT
+            system_prompt = NORMAL_SYSTEM_PROMPT + protocol_context
 
         history = db.query(ChatSession).filter(
             ChatSession.session_id == payload.session_id
@@ -308,4 +378,6 @@ async def _groq_response(payload: ChatMessage, db: Session, emergency: bool = Fa
             order_state="idle",
         )
     except Exception as e:
+        if 'logger' in globals():
+            logger.error(f"Chatbot error: {e}")
         raise HTTPException(status_code=500, detail=f"Chatbot error: {str(e)}")

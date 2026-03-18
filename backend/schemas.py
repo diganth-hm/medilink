@@ -19,6 +19,7 @@ class UserLogin(BaseModel):
 
 class OTPRequest(BaseModel):
     identifier: str  # email or mobile
+    channel: str     # email or sms
 
 
 class OTPVerify(BaseModel):
@@ -162,6 +163,9 @@ class DoctorProfileCreate(DoctorProfileBase):
 class DoctorProfileOut(DoctorProfileBase):
     id: int
     user_id: int
+    verification_status: str
+    verification_doc_path: Optional[str] = None
+    verified_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True

@@ -6,12 +6,11 @@ import { API_URL } from '../config'
 import { useUserLocation } from '../context/LocationContext'
 
 const SUGGESTIONS = [
-  'I need Paracetamol 650mg, 10 tablets',
-  'Order Cetirizine 10mg, 1 strip',
-  'What do I do if someone is unresponsive?',
-  'Steps for managing anaphylaxis?',
-  'Is ibuprofen safe for a cardiac patient?',
-  'How to help someone having a seizure?',
+  { label: 'Medicine Order', text: 'I need Paracetamol 650mg, 10 tablets', icon: '💊' },
+  { label: 'CPR Guide', text: 'How to perform CPR in an emergency?', icon: '🫀' },
+  { label: 'Stroke Check', text: 'What are the signs of a stroke?', icon: '🧠' },
+  { label: 'Burn First Aid', text: 'First aid for severe burns?', icon: '🔥' },
+  { label: 'Allergy Check', text: 'Check for drug interactions with Ibuprofen', icon: '⚠️' },
 ]
 
 // ── Delivery option card ──────────────────────────────────────────────────
@@ -193,47 +192,58 @@ export default function Chatbot() {
       <div className="max-w-3xl mx-auto w-full flex-1 flex flex-col px-4 pt-8 pb-4">
 
         {/* Header */}
-        <div className="flex items-center gap-4 mb-6">
-          <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-violet-600 rounded-2xl flex items-center justify-center shadow-xl text-2xl">
-            🤖
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-white">MediLink AI</h1>
-            <div className="flex items-center gap-3 flex-wrap">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-                <span className="text-green-400 text-sm">Online · Medical Assistant</span>
+        <div className="glass-premium p-6 rounded-3xl mb-8 flex items-center justify-between border border-white/10 shadow-2xl relative overflow-hidden group">
+          <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-violet-600/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+          <div className="flex items-center gap-5 relative z-10">
+            <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-violet-600 rounded-2xl flex items-center justify-center shadow-xl text-3xl transform rotate-3 hover:rotate-0 transition-transform duration-300">
+              🤖
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-white tracking-tight">MediLink AI <span className="text-xs font-normal text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-md ml-2 border border-blue-500/20 uppercase tracking-widest">PRO</span></h1>
+              <div className="flex items-center gap-3 flex-wrap mt-1">
+                <div className="flex items-center gap-2">
+                  <div className="w-2.5 h-2.5 bg-green-400 rounded-full animate-pulse shadow-[0_0_8px_rgba(74,222,128,0.5)]" />
+                  <span className="text-green-400 text-sm font-medium">Assistant Online</span>
+                </div>
+                {locationLoading ? (
+                  <span className="text-xs text-slate-500 flex items-center gap-1 animate-pulse">
+                     📍 Locating...
+                  </span>
+                ) : coords ? (
+                  <span className="text-xs text-blue-300 flex items-center gap-1 bg-blue-500/10 px-2 py-0.5 rounded-full border border-blue-500/20">
+                    📍 {address || 'Live Location Active'}
+                  </span>
+                ) : null}
               </div>
-              {/* Live location badge */}
-              {locationLoading ? (
-                <span className="text-xs text-slate-500 flex items-center gap-1">
-                  <div className="w-2 h-2 bg-slate-500 rounded-full animate-pulse" /> Locating...
-                </span>
-              ) : coords ? (
-                <span className="text-xs text-blue-400 flex items-center gap-1 bg-blue-500/10 px-2 py-0.5 rounded-full border border-blue-500/20">
-                  📍 {address || `${coords.lat.toFixed(3)}, ${coords.lng.toFixed(3)}`}
-                </span>
-              ) : (
-                <span className="text-xs text-yellow-500 flex items-center gap-1">
-                  ⚠️ Location unavailable
-                </span>
-              )}
             </div>
           </div>
+          <button onClick={() => setMessages([messages[0]])} className="p-3 bg-slate-800/50 hover:bg-red-500/20 rounded-xl border border-slate-700 hover:border-red-500/50 text-slate-400 hover:text-red-400 transition-all z-10" title="Clear Chat">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+          </button>
         </div>
 
         {/* Suggestions */}
         {messages.length <= 1 && (
-          <div className="mb-4">
-            <p className="text-slate-500 text-xs uppercase tracking-wider mb-3">Suggested</p>
-            <div className="flex flex-wrap gap-2">
+          <div className="mb-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+            <div className="flex items-center gap-2 mb-4 px-1">
+              <div className="h-px flex-1 bg-gradient-to-r from-transparent via-slate-700 to-transparent" />
+              <p className="text-slate-500 text-[10px] uppercase tracking-[0.2em] font-bold">Recommended Actions</p>
+              <div className="h-px flex-1 bg-gradient-to-r from-transparent via-slate-700 to-transparent" />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {SUGGESTIONS.map((s, i) => (
                 <button
                   key={i}
-                  onClick={() => sendMessage(s)}
-                  className="text-xs px-3 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-blue-500/50 rounded-xl text-slate-300 hover:text-white transition-all duration-200"
+                  onClick={() => sendMessage(s.text)}
+                  className="flex items-center gap-3 p-4 bg-slate-800/30 hover:bg-blue-600/10 border border-slate-700/50 hover:border-blue-500/50 rounded-2xl text-left transition-all duration-300 hover:shadow-lg hover:shadow-blue-500/5 group"
                 >
-                  {s}
+                  <span className="text-2xl grayscale group-hover:grayscale-0 transition-all duration-300">{s.icon}</span>
+                  <div>
+                    <div className="text-slate-200 font-semibold text-sm group-hover:text-blue-400 transition-colors">{s.label}</div>
+                    <div className="text-slate-500 text-xs mt-0.5 line-clamp-1 italic">"{s.text}"</div>
+                  </div>
                 </button>
               ))}
             </div>

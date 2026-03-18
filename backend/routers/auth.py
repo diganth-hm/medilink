@@ -2,7 +2,7 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from database import get_db
-from models import User, OTPRecord
+from models import User, OTPToken
 from schemas import UserRegister, UserLogin, Token, UserOut, OTPRequest, OTPVerify
 from auth import hash_password, verify_password, create_access_token
 from services.otp_service import create_otp, verify_otp, get_otp_remaining_seconds
@@ -16,7 +16,7 @@ router = APIRouter()
 OTP_EXPIRY_MINUTES = int(os.getenv("OTP_EXPIRY_MINUTES", "5"))
 
 
-@router.post("/register", response_model=UserOut, status_code=status.HTTP_201_CREATED)
+@router.post("/register", response_model=Token, status_code=status.HTTP_201_CREATED)
 def register(user_data: UserRegister, db: Session = Depends(get_db)):
     existing = db.query(User).filter(User.email == user_data.email).first()
     if existing:
@@ -39,12 +39,17 @@ def register(user_data: UserRegister, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(new_user)
     logger.info("[AUTH] New user registered: %s (role=%s)", user_data.email, user_data.role)
-    return new_user
+    token = create_access_token(data={"sub": str(new_user.id)})
+    return Token(
+        access_token=token,
+        token_type="bearer",
+        user=UserOut.model_validate(new_user)
+    )
 
 
-@router.post("/login", response_model=Token)
+@router.post("/login")
 def login(user_data: UserLogin, db: Session = Depends(get_db)):
-    """Standard email + password login."""
+    """Standard email + password login. Now returns otp_required."""
     if user_data.email and user_data.password:
         user = db.query(User).filter(User.email == user_data.email).first()
         if not user or not verify_password(user_data.password, user.password_hash):
@@ -53,13 +58,8 @@ def login(user_data: UserLogin, db: Session = Depends(get_db)):
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid email or password",
             )
-        logger.info("[AUTH] Password login success: %s", user_data.email)
-        token = create_access_token(data={"sub": str(user.id)})
-        return Token(
-            access_token=token,
-            token_type="bearer",
-            user=UserOut.model_validate(user)
-        )
+        logger.info("[AUTH] Password matched for: %s, requiring OTP", user_data.email)
+        return {"status": "otp_required", "identifier": user.email}
     else:
         raise HTTPException(
             status_code=400,
@@ -82,9 +82,10 @@ def send_otp_route(request: OTPRequest, db: Session = Depends(get_db)):
     ).first()
 
     # Always generate OTP and try to send — don't leak user existence
-    otp_code = create_otp(db, identifier)
+    channel = request.channel.strip().lower()
+    otp_code = create_otp(db, identifier, channel)
 
-    is_email = "@" in identifier
+    is_email = (channel == "email")
     expiry_min = OTP_EXPIRY_MINUTES
     
     otp_message = (
@@ -126,7 +127,7 @@ def send_otp_route(request: OTPRequest, db: Session = Depends(get_db)):
     return response
 
 
-@router.post("/verify-otp", response_model=Token)
+@router.post("/verify-otp")
 def verify_otp_route(request: OTPVerify, db: Session = Depends(get_db)):
     """
     Verify the OTP and return a JWT access token on success.
@@ -138,7 +139,7 @@ def verify_otp_route(request: OTPVerify, db: Session = Depends(get_db)):
 
     if not verify_otp(db, identifier, otp_code):
         # Check if record still exists (i.e. wrong code vs expired)
-        record = db.query(OTPRecord).filter(OTPRecord.identifier == identifier).first()
+        record = db.query(OTPToken).filter(OTPToken.identifier == identifier, OTPToken.used == False).first()
         if record and record.attempts >= 5:
             detail = "Too many failed attempts. Please request a new OTP."
         else:
@@ -151,11 +152,8 @@ def verify_otp_route(request: OTPVerify, db: Session = Depends(get_db)):
     ).first()
 
     if not user:
-        logger.warning("[AUTH] OTP verified but no user found for: %s", identifier)
-        raise HTTPException(
-            status_code=404,
-            detail="Account not found. Please register first."
-        )
+        logger.info("[AUTH] OTP verified for new registration: %s", identifier)
+        return {"status": "verified", "message": "OTP verified successfully. Proceed to registration."}
 
     token = create_access_token(data={"sub": str(user.id)})
     logger.info("[AUTH] OTP login success for user %s (%s)", user.id, identifier)

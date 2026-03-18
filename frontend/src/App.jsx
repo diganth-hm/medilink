@@ -21,6 +21,8 @@ import HospitalConcessions from './pages/HospitalConcessions'
 import MedicalIDCard from './pages/MedicalIDCard'
 import BiometricPortal from './pages/BiometricPortal'
 import BiometricEnroll from './pages/BiometricEnroll'
+import DoctorVerification from './pages/DoctorVerification'
+import PublicFundraising from './pages/PublicFundraising'
 
 export default function App() {
   return (
@@ -62,6 +64,8 @@ export default function App() {
           <Route path="/medical-id" element={<ProtectedRoute><MedicalIDCard /></ProtectedRoute>} />
           <Route path="/biometric-portal" element={<ProtectedRoute><BiometricPortal /></ProtectedRoute>} />
           <Route path="/biometric-enroll" element={<ProtectedRoute><BiometricEnroll /></ProtectedRoute>} />
+          <Route path="/doctor-verification" element={<ProtectedRoute><DoctorVerification /></ProtectedRoute>} />
+          <Route path="/explore-fundraising" element={<PublicFundraising />} />
 
           {/* 404 */}
           <Route path="*" element={
