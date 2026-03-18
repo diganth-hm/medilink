@@ -56,37 +56,52 @@ DEV_MODE = not (SMTP_EMAIL or SENDGRID_API_KEY or TWILIO_ACCOUNT_SID or FAST2SMS
 
 def _send_via_smtp(to_email: str, subject: str, body_html: str, body_text: str) -> bool:
     """Send email via SMTP (Gmail or any SMTP server)."""
+    smtp_email = os.getenv("SMTP_USER", "")
+    smtp_password = os.getenv("SMTP_PASS", "")
+    smtp_host = os.getenv("SMTP_HOST", "smtp.gmail.com")
+    smtp_port = int(os.getenv("SMTP_PORT", "587"))
+
+    if not smtp_email or not smtp_password:
+        logger.error("[EMAIL] SMTP credentials missing in environment.")
+        return False
+
     try:
         msg = MIMEMultipart("alternative")
         msg["Subject"] = subject
-        msg["From"] = SMTP_EMAIL
+        msg["From"] = smtp_email
         msg["To"] = to_email
         msg.attach(MIMEText(body_text, "plain"))
         msg.attach(MIMEText(body_html, "html"))
 
         context = ssl.create_default_context()
-        with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
+        with smtplib.SMTP(smtp_host, smtp_port) as server:
             server.ehlo()
             server.starttls(context=context)
-            server.login(SMTP_EMAIL, SMTP_PASSWORD)
-            server.sendmail(SMTP_EMAIL, to_email, msg.as_string())
+            server.login(smtp_email, smtp_password)
+            server.sendmail(smtp_email, to_email, msg.as_string())
 
         logger.info("[EMAIL] Sent via SMTP to %s", to_email)
         return True
     except Exception as e:
-        logger.error("[EMAIL] SMTP failed: %s", e)
+        logger.error("[EMAIL] SMTP failed for %s: %s", to_email, str(e))
         return False
 
 
 def _send_via_sendgrid(to_email: str, subject: str, body_html: str, body_text: str) -> bool:
     """Send email via SendGrid API."""
+    api_key = os.getenv("SENDGRID_API_KEY", "")
+    sender_email = os.getenv("SMTP_USER", "noreply@medilink.app")
+
+    if not api_key:
+        return False
+
     try:
         import urllib.request
         import json
 
         payload = json.dumps({
             "personalizations": [{"to": [{"email": to_email}]}],
-            "from": {"email": SMTP_EMAIL or "noreply@medilink.app"},
+            "from": {"email": sender_email},
             "subject": subject,
             "content": [
                 {"type": "text/plain", "value": body_text},
@@ -98,7 +113,7 @@ def _send_via_sendgrid(to_email: str, subject: str, body_html: str, body_text: s
             "https://api.sendgrid.com/v3/mail/send",
             data=payload,
             headers={
-                "Authorization": f"Bearer {SENDGRID_API_KEY}",
+                "Authorization": f"Bearer {api_key}",
                 "Content-Type": "application/json",
             },
             method="POST",
@@ -108,7 +123,7 @@ def _send_via_sendgrid(to_email: str, subject: str, body_html: str, body_text: s
                 logger.info("[EMAIL] Sent via SendGrid to %s", to_email)
                 return True
     except Exception as e:
-        logger.error("[EMAIL] SendGrid failed: %s", e)
+        logger.error("[EMAIL] SendGrid failed for %s: %s", to_email, str(e))
     return False
 
 
@@ -143,25 +158,15 @@ def send_email(to_email: str, subject: str, body: str) -> bool:
         html = f"<p>{body}</p>"
         plain = body
 
-    if SMTP_EMAIL and SMTP_PASSWORD:
-        if _send_via_smtp(to_email, subject, html, plain):
-            return True
+    if _send_via_smtp(to_email, subject, html, plain):
+        return True
 
-    if SENDGRID_API_KEY:
-        if _send_via_sendgrid(to_email, subject, html, plain):
-            return True
+    if _send_via_sendgrid(to_email, subject, html, plain):
+        return True
 
-    # DEV FALLBACK — log clearly so developers can test
-    logger.warning(
-        "\n" + "="*60 +
-        "\n[DEV MODE] Email NOT sent — no SMTP/SendGrid configured." +
-        f"\n  TO      : {to_email}" +
-        f"\n  SUBJECT : {subject}" +
-        f"\n  OTP CODE: {otp_val or '(see body)'}" +
-        f"\n  BODY    : {plain}" +
-        "\n" + "="*60
-    )
-    return False   # returns False so caller knows delivery failed
+    # FINAL FAILURE LOGGING
+    logger.error("[AUTH] Critical: Failed to send email to %s via all providers.", to_email)
+    return False
 
 
 # ---------------------------------------------------------------------------
@@ -170,23 +175,31 @@ def send_email(to_email: str, subject: str, body: str) -> bool:
 
 def _send_via_twilio(phone: str, message: str) -> bool:
     """Send SMS via Twilio REST API."""
+    sid = os.getenv("TWILIO_SID", "")
+    token = os.getenv("TWILIO_TOKEN", "")
+    from_num = os.getenv("TWILIO_FROM", "")
+
+    if not sid or not token or not from_num:
+        logger.error("[SMS] Twilio credentials missing in environment.")
+        return False
+
     try:
         import urllib.request
         import urllib.parse
         import base64
 
         credentials = base64.b64encode(
-            f"{TWILIO_ACCOUNT_SID}:{TWILIO_AUTH_TOKEN}".encode()
+            f"{sid}:{token}".encode()
         ).decode()
 
         payload = urllib.parse.urlencode({
             "To": phone,
-            "From": TWILIO_FROM_NUMBER,
+            "From": from_num,
             "Body": message,
         }).encode()
 
         req = urllib.request.Request(
-            f"https://api.twilio.com/2010-04-01/Accounts/{TWILIO_ACCOUNT_SID}/Messages.json",
+            f"https://api.twilio.com/2010-04-01/Accounts/{sid}/Messages.json",
             data=payload,
             headers={
                 "Authorization": f"Basic {credentials}",
@@ -199,12 +212,16 @@ def _send_via_twilio(phone: str, message: str) -> bool:
                 logger.info("[SMS] Sent via Twilio to %s", phone)
                 return True
     except Exception as e:
-        logger.error("[SMS] Twilio failed: %s", e)
+        logger.error("[SMS] Twilio failed for %s: %s", phone, str(e))
     return False
 
 
 def _send_via_fast2sms(phone: str, message: str) -> bool:
     """Send SMS via Fast2SMS (Indian numbers, DLT route)."""
+    api_key = os.getenv("FAST2SMS_API_KEY", "")
+    if not api_key:
+        return False
+
     try:
         import urllib.request
         import urllib.parse
@@ -225,7 +242,7 @@ def _send_via_fast2sms(phone: str, message: str) -> bool:
             "https://www.fast2sms.com/dev/bulkV2",
             data=payload,
             headers={
-                "authorization": FAST2SMS_API_KEY,
+                "authorization": api_key,
                 "Content-Type": "application/json",
             },
             method="POST",
@@ -236,9 +253,9 @@ def _send_via_fast2sms(phone: str, message: str) -> bool:
                 logger.info("[SMS] Sent via Fast2SMS to %s", phone)
                 return True
             else:
-                logger.error("[SMS] Fast2SMS error: %s", data)
+                logger.error("[SMS] Fast2SMS error for %s: %s", phone, data)
     except Exception as e:
-        logger.error("[SMS] Fast2SMS failed: %s", e)
+        logger.error("[SMS] Fast2SMS failed for %s: %s", phone, str(e))
     return False
 
 
@@ -247,29 +264,13 @@ def send_sms(phone_number: str, message: str) -> bool:
     Public API — send an SMS.
     Tries Twilio → Fast2SMS → dev fallback.
     """
-    import re
-    otp_val = None
-    match = re.search(r"\b(\d{6})\b", message)
-    if match:
-        otp_val = match.group(1)
+    if _send_via_twilio(phone_number, message):
+        return True
 
-    if TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN and TWILIO_FROM_NUMBER:
-        if _send_via_twilio(phone_number, message):
-            return True
+    if _send_via_fast2sms(phone_number, message):
+        return True
 
-    if FAST2SMS_API_KEY:
-        if _send_via_fast2sms(phone_number, message):
-            return True
-
-    # DEV FALLBACK
-    logger.warning(
-        "\n" + "="*60 +
-        "\n[DEV MODE] SMS NOT sent — no Twilio/Fast2SMS configured." +
-        f"\n  TO      : {phone_number}" +
-        f"\n  OTP CODE: {otp_val or '(see message)'}" +
-        f"\n  MESSAGE : {message}" +
-        "\n" + "="*60
-    )
+    logger.error("[AUTH] Critical: Failed to send SMS to %s via all providers.", phone_number)
     return False
 
 
