@@ -68,7 +68,7 @@ export default function App() {
           <Route path="/concessions" element={<ProtectedRoute><HospitalConcessions /></ProtectedRoute>} />
           <Route path="/medical-id" element={<ProtectedRoute><MedicalIDCard /></ProtectedRoute>} />
           <Route path="/biometric-portal" element={<ProtectedRoute><BiometricPortal /></ProtectedRoute>} />
-          <Route path="/biometric-enroll" element={<ProtectedRoute><BiometricEnroll /></ProtectedRoute>} />
+          <Route path="/enroll-biometric" element={<BiometricEnroll />} />
           <Route path="/doctor-verification" element={<ProtectedRoute><DoctorVerification /></ProtectedRoute>} />
           <Route path="/explore-fundraising" element={<PublicFundraising />} />
 

@@ -3,11 +3,14 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 /**
- * Navbar Component for MediLink
- * Features include sticky behavior, theme toggle, and responsive design.
+ * Navbar Component
+ * Features:
+ * - Animated ECG line on logo svg
+ * - Hamburger sidebar replacing top navigation links
+ * - Theme toggle and login fixed in header
  */
 export default function Navbar() {
-  const { user, logout, isAuthenticated } = useAuth();
+  const { logout, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [scrolled, setScrolled] = useState(false);
@@ -15,7 +18,6 @@ export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
-    // Sync React state with the data-theme attribute set in index.html/localStorage
     const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
     setTheme(currentTheme);
 
@@ -39,194 +41,430 @@ export default function Navbar() {
     setMenuOpen(false);
   };
 
+  const handleNavClick = (path) => {
+    setMenuOpen(false);
+    navigate(path);
+  };
+
   const isActive = (path) => location.pathname === path;
+
+  // Render Sidebar Links based on auth
+  const navLinks = [
+    { name: 'Scan QR', path: '/scan', icon: (
+      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm14 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+      </svg>
+    )}
+  ];
+
+  if (isAuthenticated) {
+    navLinks.push(
+      { name: 'Dashboard', path: '/dashboard', icon: (
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+        </svg>
+      )},
+      { name: 'Profile', path: '/profile', icon: (
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+        </svg>
+      )},
+      { name: 'Records', path: '/records', icon: (
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
+      )}
+    );
+  } else {
+    navLinks.push(
+      { name: 'Fundraising', path: '/explore-fundraising', icon: (
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+        </svg>
+      )}
+    );
+  }
 
   return (
     <>
       <nav className={`fixed top-0 left-0 right-0 z-[1000] h-[64px] transition-all duration-300 ${
-        scrolled 
-          ? 'navbar-scrolled' 
-          : 'navbar-default'
+        scrolled ? 'ml-navbar-scrolled' : 'ml-navbar-default'
       }`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex items-center justify-between">
           
           {/* Logo Section */}
-          <Link to="/" className="flex items-center gap-2 group" style={{ textDecoration: 'none' }}>
-            <div className="h-[36px] w-[36px]">
-              <svg viewBox="0 0 24 24" className="w-full h-full">
-                <path fill="#E5341A" d="M12 2L2 7v6.5c0 5.55 3.84 10.74 9 12.13 5.16-1.39 9-6.58 9-12.13V7L12 2zm1 14h-2v-3H8v-2h3V8h2v3h3v2h-3v3z" />
-              </svg>
-            </div>
-            <span className="text-[22px] font-[700] tracking-tight flex items-center logo-wordmark">
-              <span className="logo-medi-text transition-colors duration-300">medi</span>
-              <span className="text-[#E5341A]">link</span>
-            </span>
+          <Link to="/" className="flex flex-col justify-center h-full relative" style={{ textDecoration: 'none' }}>
+            <svg viewBox="0 0 200 64" className="h-[48px] w-auto">
+              <defs>
+                <style>{`
+                  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@700&display=swap');
+                  .nav-logo-medi {
+                    font-family: 'Space Grotesk', sans-serif;
+                    font-weight: 700;
+                    font-size: 22px;
+                    transition: fill 0.3s ease;
+                  }
+                  .nav-logo-link {
+                    font-family: 'Space Grotesk', sans-serif;
+                    font-weight: 700;
+                    font-size: 22px;
+                    fill: #E5341A;
+                  }
+                  .nav-ecg-line {
+                    fill: none;
+                    stroke: #E5341A;
+                    stroke-width: 1.2;
+                    stroke-linecap: round;
+                    stroke-linejoin: round;
+                    stroke-dasharray: 300;
+                    opacity: 0;
+                    animation: navEcgDraw 1.8s ease-out 0.3s forwards;
+                  }
+                  @keyframes navEcgDraw {
+                    0%   { stroke-dashoffset: 300; opacity: 0; }
+                    20%  { opacity: 1; }
+                    70%  { stroke-dashoffset: 0; opacity: 0.7; }
+                    100% { stroke-dashoffset: 0; opacity: 0.25; }
+                  }
+                  .nav-pulse-dot {
+                    animation: navLivePulse 2s ease-in-out infinite;
+                  }
+                  @keyframes navLivePulse {
+                    0%,100% { opacity: 1; transform: scale(1); }
+                    50%     { opacity: 0.3; transform: scale(1.1); }
+                  }
+                `}</style>
+              </defs>
+              
+              {/* Hex Shield */}
+              <path 
+                fill="#E5341A" 
+                d="M12 2L2 7v6.5c0 5.55 3.84 10.74 9 12.13 5.16-1.39 9-6.58 9-12.13V7L12 2zm1 14h-2v-3H8v-2h3V8h2v3h3v2h-3v3z" 
+                transform="translate(0, 10) scale(1.5)"
+              />
+              
+              {/* Live pulsing dot center of cross */}
+              <circle cx="18" cy="28" r="1.5" fill="white" className="nav-pulse-dot" />
+
+              {/* Wordmark */}
+              <text x="42" y="38" className="nav-logo-medi">medi</text>
+              <text x="94" y="38" className="nav-logo-link">link</text>
+
+              {/* Decorative ECG baseline */}
+              <path 
+                className="nav-ecg-line" 
+                d="M42 46 L80 46 L85 41 L90 52 L95 46 L130 46 M1 1" 
+              />
+            </svg>
           </Link>
 
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-8">
-            <Link to="/scan" className={`nav-link ${isActive('/scan') ? 'active' : ''}`}>Scan QR</Link>
+          {/* Right Area: Theme, Login, Hamburger */}
+          <div className="flex items-center gap-2 flex-row">
+            
+            {/* Theme Toggle Button */}
+            <button 
+              onClick={toggleTheme}
+              className="ml-theme-btn"
+              aria-label="Toggle Theme"
+            >
+              {theme === 'dark' ? (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 9h-1m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+              ) : (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                </svg>
+              )}
+            </button>
+
+            {/* Login / Output Button */}
             {isAuthenticated ? (
-              <>
-                <Link to="/dashboard" className={`nav-link ${isActive('/dashboard') ? 'active' : ''}`}>Dashboard</Link>
-                <Link to="/profile" className={`nav-link ${isActive('/profile') ? 'active' : ''}`}>Profile</Link>
-                <Link to="/records" className={`nav-link ${isActive('/records') ? 'active' : ''}`}>Records</Link>
-              </>
+              <button onClick={handleLogout} className="ml-login-btn ml-login-outline">Logout</button>
             ) : (
-              <Link to="/explore-fundraising" className={`nav-link ${isActive('/explore-fundraising') ? 'active' : ''}`}>Fundraising</Link>
+              <Link to="/login" className="ml-login-btn">Login</Link>
             )}
 
-            <div className="flex items-center gap-4 ml-2">
-              {/* Theme Toggle Button */}
-              <button 
-                onClick={toggleTheme}
-                className="theme-toggle-btn"
-                aria-label="Toggle Theme"
-              >
-                {theme === 'dark' ? (
-                  <svg className="w-5 h-5 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 9h-1m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-                  </svg>
-                ) : (
-                  <svg className="w-5 h-5 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                  </svg>
-                )}
-              </button>
-
-              {isAuthenticated ? (
-                <button onClick={handleLogout} className="btn-action">Logout</button>
-              ) : (
-                <Link to="/login" className="btn-action">Login</Link>
-              )}
-            </div>
+            {/* Hamburger Button */}
+            <button 
+              className="ml-hamburger" 
+              onClick={() => setMenuOpen(true)}
+              aria-label="Open Menu"
+            >
+              <span className="ml-hamburger-line"></span>
+              <span className="ml-hamburger-line"></span>
+              <span className="ml-hamburger-line"></span>
+            </button>
           </div>
+        </div>
+      </nav>
 
-          {/* Mobile Menu Toggle */}
-          <button 
-            className="md:hidden p-2 text-[var(--text-primary)] transition-colors"
-            onClick={() => setMenuOpen(!menuOpen)}
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={menuOpen ? "M6 18L18 6M6 6l12 12" : "M4 6h16M4 12h16M4 18h16"} />
+      {/* --- Sidebar & Backdrop --- */}
+      {menuOpen && (
+        <div className="ml-backdrop" onClick={() => setMenuOpen(false)}></div>
+      )}
+      
+      <aside className={`ml-sidebar ${menuOpen ? 'ml-sidebar-open' : ''}`}>
+        
+        {/* Sidebar Header */}
+        <div className="ml-sidebar-header">
+          {/* Logo Hex Only */}
+          <svg viewBox="0 0 24 24" className="w-7 h-7">
+            <path fill="#E5341A" d="M12 2L2 7v6.5c0 5.55 3.84 10.74 9 12.13 5.16-1.39 9-6.58 9-12.13V7L12 2zm1 14h-2v-3H8v-2h3V8h2v3h3v2h-3v3z" />
+            <circle cx="12" cy="12" r="1.5" fill="white" className="nav-pulse-dot" />
+          </svg>
+          
+          <button className="ml-sidebar-close" onClick={() => setMenuOpen(false)}>
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
 
-        {/* Mobile Menu */}
-        {menuOpen && (
-          <div className="md:hidden mobile-menu-overlay animate-slideDown">
-            <div className="px-6 py-8 flex flex-col gap-6">
-              <Link to="/scan" onClick={() => setMenuOpen(false)} className="nav-link text-lg">Scan QR</Link>
-              {isAuthenticated ? (
-                <>
-                  <Link to="/dashboard" onClick={() => setMenuOpen(false)} className="nav-link text-lg">Dashboard</Link>
-                  <Link to="/profile" onClick={() => setMenuOpen(false)} className="nav-link text-lg">Profile</Link>
-                  <button onClick={handleLogout} className="btn-action w-full text-center">Logout</button>
-                </>
-              ) : (
-                <Link to="/login" onClick={() => setMenuOpen(false)} className="btn-action w-full text-center">Login</Link>
-              )}
+        {/* Sidebar Links */}
+        <div className="ml-sidebar-nav">
+          {navLinks.map((link) => (
+            <div 
+              key={link.path} 
+              className={`ml-sidebar-link ${isActive(link.path) ? 'ml-sidebar-link-active' : ''}`}
+              onClick={() => handleNavClick(link.path)}
+            >
+              {link.icon}
+              <span>{link.name}</span>
             </div>
+          ))}
+        </div>
+
+        {/* Sidebar Footer */}
+        <div className="ml-sidebar-footer">
+          <div className="ml-tagline">Emergency Medical Record Access</div>
+          <div className="ml-live-badge">
+            <span className="ml-live-dot"></span>
+            LIVE
           </div>
-        )}
-      </nav>
+        </div>
+
+      </aside>
 
       <style>{`
-        .navbar-default {
+        /* --- Navbar Base --- */
+        .ml-navbar-default {
           background-color: var(--bg-primary);
           border-bottom: 1px solid var(--border);
         }
         
-        .navbar-scrolled {
+        .ml-navbar-scrolled {
           background-color: var(--navbar-bg);
           backdrop-filter: blur(12px);
           -webkit-backdrop-filter: blur(12px);
           border-bottom: 1px solid var(--border);
         }
 
-        [data-theme="light"] .navbar-default {
-          background-color: var(--bg-primary);
-          border-bottom-color: var(--border);
+        /* Inline SVG theme responses */
+        [data-theme="light"] .nav-logo-medi {
+          fill: #0A1628;
+        }
+        [data-theme="dark"] .nav-logo-medi {
+          fill: #FFFFFF;
         }
 
-        .logo-medi-text {
+        /* --- Right Controls --- */
+        .ml-hamburger {
+          width: 40px;
+          height: 40px;
+          border-radius: 8px;
+          background: transparent;
+          border: 1px solid var(--border);
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 5px;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+        .ml-hamburger-line {
+          width: 18px;
+          height: 2px;
+          background: var(--text-primary);
+          border-radius: 2px;
+          transition: all 0.2s ease;
+        }
+        .ml-hamburger:hover {
+          border-color: #E5341A;
+        }
+        .ml-hamburger:hover .ml-hamburger-line {
+          background: #E5341A;
+        }
+
+        .ml-theme-btn {
+          width: 40px;
+          height: 40px;
+          border-radius: 8px;
           color: var(--text-primary);
-        }
-
-        [data-theme="light"] .logo-medi-text {
-          color: var(--text-primary);
-        }
-
-        .nav-link {
-          font-family: 'DM Sans', sans-serif;
-          font-weight: 500;
-          font-size: 15px;
-          color: var(--text-secondary);
-          transition: color 0.3s ease;
-          text-decoration: none;
-        }
-
-        .nav-link:hover, .nav-link.active {
-          color: var(--text-primary);
-        }
-
-        .theme-toggle-btn {
-          padding: 8px;
-          border-radius: 9999px;
-          color: var(--text-primary);
-          transition: all 0.3s ease;
           display: flex;
           align-items: center;
           justify-content: center;
           border: none;
           background: transparent;
           cursor: pointer;
+          transition: all 0.2s ease;
         }
-        
-        .theme-toggle-btn:hover {
-          background-color: rgba(128, 128, 128, 0.15);
+        .ml-theme-btn:hover {
+          color: #E5341A;
           transform: rotate(15deg);
         }
 
-        .btn-action {
-          background-color: #E5341A;
-          color: var(--text-primary);
+        .ml-login-btn {
+          background: #E5341A;
+          color: #FFFFFF;
           font-family: 'DM Sans', sans-serif;
           font-weight: 700;
           font-size: 14px;
-          padding: 10px 24px;
-          border-radius: 9999px;
+          padding: 0 20px;
+          height: 40px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 8px;
           border: none;
           cursor: pointer;
-          transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+          transition: all 0.2s ease;
           text-decoration: none;
-          display: inline-block;
-          box-shadow: 0 4px 12px rgba(229, 52, 26, 0.3);
+        }
+        .ml-login-btn:hover {
+          background: #c42d16;
+          transform: translateY(-1px);
+        }
+        .ml-login-outline {
+          background: transparent;
+          color: var(--text-primary);
+          border: 1px solid var(--border);
+        }
+        .ml-login-outline:hover {
+          border-color: #E5341A;
+          color: #E5341A;
+          background: rgba(229, 52, 26, 0.05);
         }
 
-        .btn-action:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 6px 16px rgba(229, 52, 26, 0.4);
+        /* --- Sidebar & Backdrop --- */
+        .ml-backdrop {
+          position: fixed;
+          inset: 0;
+          z-index: 1999;
+          background: rgba(0, 0, 0, 0.5);
+          backdrop-filter: blur(2px);
+          -webkit-backdrop-filter: blur(2px);
+          animation: mlFadeIn 0.3s ease forwards;
+        }
+        @keyframes mlFadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
         }
 
-        .mobile-menu-overlay {
-          position: absolute;
-          top: 64px;
-          left: 0;
+        .ml-sidebar {
+          width: min(320px, 85vw);
+          height: 100vh;
+          position: fixed;
+          top: 0;
           right: 0;
-          background-color: var(--bg-secondary);
-          border-bottom: 1px solid var(--border);
-          box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+          z-index: 2000;
+          background: var(--bg-secondary);
+          border-left: 1px solid var(--border);
+          padding: 0;
+          transform: translateX(100%);
+          transition: transform 0.4s cubic-bezier(0.76, 0, 0.24, 1);
+          display: flex;
+          flex-direction: column;
+        }
+        .ml-sidebar-open {
+          transform: translateX(0);
         }
 
-        @keyframes slideDown {
-          from { opacity: 0; transform: translateY(-10px); }
-          to { opacity: 1; transform: translateY(0); }
+        .ml-sidebar-header {
+          height: 64px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 0 24px;
+          border-bottom: 1px solid var(--border);
+          flex-shrink: 0;
         }
-        .animate-slideDown {
-          animation: slideDown 0.3s ease forwards;
+
+        .ml-sidebar-close {
+          background: none;
+          border: none;
+          color: var(--text-secondary);
+          cursor: pointer;
+          transition: color 0.2s ease;
+          padding: 4px;
         }
+        .ml-sidebar-close:hover {
+          color: #E5341A;
+        }
+
+        .ml-sidebar-nav {
+          flex: 1;
+          padding: 16px 0;
+          overflow-y: auto;
+        }
+
+        .ml-sidebar-link {
+          display: flex;
+          align-items: center;
+          gap: 14px;
+          padding: 14px 24px;
+          font-size: 16px;
+          font-weight: 500;
+          color: var(--text-primary);
+          cursor: pointer;
+          border-left: 3px solid transparent;
+          transition: all 0.2s ease;
+          font-family: 'DM Sans', sans-serif;
+        }
+        .ml-sidebar-link:hover, .ml-sidebar-link-active {
+          background: rgba(229, 52, 26, 0.06);
+          border-left-color: #E5341A;
+          color: #E5341A;
+        }
+
+        .ml-sidebar-footer {
+          padding: 24px;
+          border-top: 1px solid var(--border);
+          flex-shrink: 0;
+        }
+
+        .ml-tagline {
+          font-size: 11px;
+          letter-spacing: 3px;
+          color: var(--text-secondary);
+          text-transform: uppercase;
+          margin-bottom: 10px;
+          font-family: 'Space Grotesk', sans-serif;
+        }
+
+        .ml-live-badge {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          color: #E5341A;
+          font-weight: 700;
+          font-size: 12px;
+          font-family: 'Space Grotesk', sans-serif;
+        }
+        .ml-live-dot {
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+          background: #E5341A;
+          animation: mlPulse 2s infinite;
+        }
+        @keyframes mlPulse {
+          0% { box-shadow: 0 0 0 0 rgba(229, 52, 26, 0.4); }
+          70% { box-shadow: 0 0 0 6px rgba(229, 52, 26, 0); }
+          100% { box-shadow: 0 0 0 0 rgba(229, 52, 26, 0); }
+        }
+
       `}</style>
     </>
   );

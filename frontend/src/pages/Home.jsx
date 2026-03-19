@@ -1,6 +1,11 @@
-import { Link } from 'react-router-dom'
+import { useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import toast from 'react-hot-toast'
 import { useAuth } from '../context/AuthContext'
 import ChatWidget from '../components/ChatWidget'
+import FingerprintScannerOverlay from '../components/FingerprintScannerOverlay'
+import BiometricErrorModal from '../components/BiometricErrorModal'
+import { API_URL } from '../config'
 
 const features = [
   { icon: '🔴', title: 'Blood Group Access', desc: 'Instant blood type info for trauma & transfusion decisions' },
@@ -23,10 +28,99 @@ const scenarios = [
 ]
 
 export default function Home() {
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, loginWithToken } = useAuth()
+  const navigate = useNavigate()
+  
+  // Fingerprint Scanner State
+  const [scannerState, setScannerState] = useState(null) // 'scanning' | 'processing' | 'success' | 'failed' | null
+  const [modalType, setModalType] = useState(null) // 'no-enrollment' | 'not-supported' | null
+
+  const handleFingerprintClick = async () => {
+    if (!window.PublicKeyCredential) {
+      setModalType('not-supported')
+      return
+    }
+
+    setScannerState('scanning')
+
+    try {
+      const challenge = new Uint8Array(32)
+      window.crypto.getRandomValues(challenge)
+
+      const credential = await navigator.credentials.get({
+        publicKey: {
+          challenge: challenge,
+          timeout: 60000,
+          userVerification: "required",
+          // rpId: window.location.hostname // Omitted for localhost testing consistency, but best practice in prod
+        }
+      })
+
+      if (credential) {
+        setScannerState('processing')
+        
+        // Convert rawId to Base64 for transmission
+        const credentialId = btoa(String.fromCharCode.apply(null, new Uint8Array(credential.rawId)))
+        
+        // Just send the ID for this simple prototype, in real WebAuthn you send the full attestation response
+        const res = await fetch(`${API_URL}/auth/biometric/verify`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ credential_id: credentialId }),
+        })
+
+        if (!res.ok) {
+          throw new Error('Backend rejection')
+        }
+
+        const data = await res.json()
+        
+        setScannerState('success')
+        
+        // Log user in
+        if (data.access_token) {
+           loginWithToken(data.access_token, data.user)
+        }
+
+        setTimeout(() => {
+          setScannerState(null)
+          navigate('/dashboard')
+        }, 1000)
+      }
+    } catch (error) {
+      console.error(error)
+      if (error.name === 'NotAllowedError') {
+         // User cancelled or explicitly denied
+         setScannerState(null)
+         toast('Fingerprint scan cancelled. Tap the button again to try.', { icon: 'ℹ️' })
+      } else {
+         // Could be 404 from backend or no match locally
+         setScannerState('failed')
+         setTimeout(() => {
+           setScannerState(null)
+           setModalType('no-enrollment')
+         }, 1000)
+      }
+    }
+  }
 
   return (
     <div className="min-h-screen">
+      {scannerState && (
+        <FingerprintScannerOverlay 
+          state={scannerState} 
+          onCancel={() => setScannerState(null)} 
+          mode="login" 
+        />
+      )}
+      
+      {modalType && (
+        <BiometricErrorModal 
+          type={modalType} 
+          onClose={() => setModalType(null)} 
+        />
+      )}
+
       {/* Hero Section */}
       <div className="relative overflow-hidden pt-24 pb-20 px-4">
         {/* Background glow */}
@@ -51,17 +145,27 @@ export default function Home() {
             no login required. Save lives when every second counts.
           </p>
 
-          <div className="flex flex-wrap gap-4 justify-center">
+          <div className="flex flex-col sm:flex-row flex-wrap gap-4 justify-center items-center">
             {isAuthenticated ? (
               <Link to="/dashboard" className="btn-primary text-base px-8 py-4">Go to Dashboard →</Link>
             ) : (
               <>
-                <Link to="/register" className="btn-primary text-base px-8 py-4">
-                  🏥 Register as Patient
+                <Link to="/register" className="btn-primary text-base px-8 py-4 w-full sm:w-auto text-center flex items-center justify-center gap-2">
+                  <span className="text-xl">🏥</span> Register as Patient
                 </Link>
-                <Link to="/scan" className="btn-secondary text-base px-8 py-4">
-                  📷 Scan QR Code
+                <Link to="/scan" className="btn-secondary text-base px-8 py-4 w-full sm:w-auto text-center flex items-center justify-center gap-2">
+                  <span className="text-xl">📷</span> Scan QR Code
                 </Link>
+                <button 
+                  onClick={handleFingerprintClick}
+                  className="btn-secondary text-base px-8 py-4 w-full sm:w-auto text-center flex items-center justify-center gap-2"
+                  style={{ borderColor: '#E5341A', color: 'var(--text-primary)' }}
+                >
+                  <svg className="w-6 h-6 text-[#E5341A]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A10.003 10.003 0 0012 3c1.248 0 2.442.243 3.535.66m-10.44 14.12a10.05 10.05 0 001.373 1.453m10.16-10.16a10.05 10.05 0 011.453 1.373M16.47 16.47a10.05 10.05 0 001.373 1.453m-12.014-4.82a13.31 13.31 0 015.014-5.014m5.24 10.48a13.31 13.31 0 01-5.04 5.04" />
+                  </svg>
+                  Fingerprint Access
+                </button>
               </>
             )}
           </div>

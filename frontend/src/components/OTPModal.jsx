@@ -8,7 +8,6 @@ export default function OTPModal({ isOpen, identifier, onVerifySuccess, onClose,
   const [otpDigits, setOtpDigits] = useState(['', '', '', '', '', ''])
   const [countdown, setCountdown] = useState(0)
   const [loading, setLoading] = useState(false)
-  const [devOtp, setDevOtp] = useState(null)
   
   const otpRefs = useRef([])
 
@@ -19,7 +18,6 @@ export default function OTPModal({ isOpen, identifier, onVerifySuccess, onClose,
       setChannel(null)
       setOtpDigits(['', '', '', '', '', ''])
       setCountdown(0)
-      setDevOtp(null)
     }
   }, [isOpen])
 
@@ -47,12 +45,7 @@ export default function OTPModal({ isOpen, identifier, onVerifySuccess, onClose,
       setStep('verify')
       setCountdown(60) // strict 60s cooldown for resend per requirements
       
-      if (data.dev_otp) {
-        setDevOtp(data.dev_otp)
-        toast.success('Dev mode: Check the modal for your OTP')
-      } else {
-        toast.success(`OTP sent to your ${selectedChannel}!`)
-      }
+      toast.success(`OTP sent to your ${selectedChannel}!`)
     } catch (err) {
       toast.error(err.message)
     } finally {
@@ -160,12 +153,6 @@ export default function OTPModal({ isOpen, identifier, onVerifySuccess, onClose,
             <p className="text-muted mb-6">
               Sent to <span className="text-primary font-medium">{identifier}</span> via {channel === 'email' ? 'Email' : 'SMS'}
             </p>
-
-            {devOtp && (
-              <div className="mb-6 p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl">
-                <span className="text-amber-400 text-xs font-bold uppercase">Dev Mode OTP: {devOtp}</span>
-              </div>
-            )}
 
             <div className="flex justify-center gap-2 mb-8" onPaste={handlePaste}>
               {otpDigits.map((d, i) => (

@@ -4,14 +4,21 @@ from sqlalchemy.orm import Session
 from database import get_db
 from models import User, OTPToken
 from schemas import UserRegister, UserLogin, Token, UserOut, OTPRequest, OTPVerify
-from auth import hash_password, verify_password, create_access_token
+from auth import hash_password, verify_password, create_access_token, get_current_user
 from services.otp_service import create_otp, verify_otp, get_otp_remaining_seconds
 from services.notification_service import send_email, send_sms
+from pydantic import BaseModel
 import os
 
 logger = logging.getLogger("medilink.auth")
 
 router = APIRouter()
+
+class BiometricEnrollRequest(BaseModel):
+    biometric_template: str
+
+class BiometricVerifyRequest(BaseModel):
+    credential_id: str
 
 OTP_EXPIRY_MINUTES = int(os.getenv("OTP_EXPIRY_MINUTES", "5"))
 
@@ -159,3 +166,35 @@ def verify_otp_route(request: OTPVerify, db: Session = Depends(get_db)):
         token_type="bearer",
         user=UserOut.model_validate(user)
     )
+
+@router.post("/biometric/enroll")
+def enroll_biometric(request: BiometricEnrollRequest, db: Session = Depends(get_db), current_user_id: int = Depends(get_current_user)):
+    user = db.query(User).filter(User.id == current_user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+        
+    user.biometric_template = request.biometric_template
+    db.commit()
+    logger.info("[AUTH] Biometric enrolled for user %s", user.id)
+    return {"success": True, "message": "Biometric enrolled successfully"}
+
+
+@router.post("/biometric/verify")
+def verify_biometric(request: BiometricVerifyRequest, db: Session = Depends(get_db)):
+    # In a real app, you would verify the signature/challenge using a library like fido2
+    # For this prototype we match the credential ID (template) stored during enrollment
+    
+    user = db.query(User).filter(User.biometric_template == request.credential_id).first()
+    if not user:
+        logger.warning("[AUTH] Biometric verification failed: no matching template found")
+        raise HTTPException(status_code=404, detail="No matching biometric enrollment found")
+        
+    token = create_access_token(data={"sub": str(user.id)})
+    logger.info("[AUTH] Biometric login success for user %s", user.id)
+    
+    return {
+        "success": True,
+        "access_token": token,
+        "token_type": "bearer",
+        "user": UserOut.model_validate(user).model_dump()
+    }
