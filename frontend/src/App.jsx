@@ -26,7 +26,19 @@ import BiometricEnroll from './pages/BiometricEnroll'
 import DoctorVerification from './pages/DoctorVerification'
 import PublicFundraising from './pages/PublicFundraising'
 
+import { useEffect } from 'react'
+import { API_URL } from './config'
+
 export default function App() {
+  useEffect(() => {
+    // Keep Render server from sleeping
+    const keepAlive = setInterval(() => {
+      fetch(`${API_URL}/health`)
+        .catch(() => {})
+    }, 4 * 60 * 1000)
+    return () => clearInterval(keepAlive)
+  }, [])
+
   return (
     <AuthProvider>
       <LocationProvider>

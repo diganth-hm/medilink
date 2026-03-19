@@ -137,14 +137,9 @@ def root():
 
 
 @app.get("/health")
-def health_check():
-    required = ["SMTP_USER", "SMTP_PASS", "TWILIO_SID", "TWILIO_TOKEN", "TWILIO_FROM", "ENVIRONMENT"]
-    loaded = [k for k in required if os.getenv(k)]
-    return {
-        "status": "healthy", 
-        "service": "MediLink API",
-        "loaded_configs": loaded
-    }
+async def health_check():
+    """Health check for Render keep-alive and monitoring."""
+    return {"status": "ok"}
 
 
 @app.post("/auth/biometric/enroll", tags=["Biometric"])

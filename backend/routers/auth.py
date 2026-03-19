@@ -1,12 +1,12 @@
 import logging
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from sqlalchemy.orm import Session
 from database import get_db
 from models import User, OTPToken
 from schemas import UserRegister, UserLogin, Token, UserOut, OTPRequest, OTPVerify
 from auth import hash_password, verify_password, create_access_token, get_current_user
 from services.otp_service import create_otp, verify_otp, get_otp_remaining_seconds
-from services.notification_service import send_email, send_sms
+from services.notification_service import send_email, send_sms, send_otp_email
 from pydantic import BaseModel
 import os
 
@@ -75,11 +75,10 @@ def login(user_data: UserLogin, db: Session = Depends(get_db)):
 
 
 @router.post("/send-otp")
-async def send_otp_route(request: OTPRequest, db: Session = Depends(get_db)):
+async def send_otp_route(request: OTPRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     """
     Generate a 6-digit OTP for the given email or mobile number.
-    The OTP is bcrypt-hashed in storage and delivered via SMTP/SMS.
-    In dev mode (no credentials configured), the OTP appears in server logs.
+    The OTP is bcrypt-hashed in storage and delivered via SMTP/SMS in the background.
     """
     print(f"[DEBUG] send-otp called")
     print(f"[DEBUG] SMTP_USER present: {bool(os.getenv('SMTP_USER'))}")
@@ -88,12 +87,12 @@ async def send_otp_route(request: OTPRequest, db: Session = Depends(get_db)):
     print(f"[DEBUG] send-otp called with data: {request}")
     identifier = request.identifier.strip()
 
-    # Verify the user exists before sending OTP (security: don't reveal if user exists vs not)
+    # Resolve user context if available (for the email template name)
     user = db.query(User).filter(
         (User.email == identifier) | (User.mobile_number == identifier)
     ).first()
+    user_name = user.name if user else "User"
 
-    # Always generate OTP and try to send — don't leak user existence
     channel = request.channel.strip().lower()
     otp_code = create_otp(db, identifier, channel)
 
@@ -105,38 +104,25 @@ async def send_otp_route(request: OTPRequest, db: Session = Depends(get_db)):
         f"This OTP expires in {expiry_min} minutes."
     )
 
-    sent = False
     if is_email:
-        sent = send_email(identifier, "Your Login OTP", otp_message)
-        if sent:
-            logger.info("[AUTH] OTP generation and email send SUCCESS for %s", identifier)
-        else:
-            logger.error("[AUTH] OTP generated but email sending FAILED for %s", identifier)
+        # Use the new async send_otp_email in background
+        background_tasks.add_task(send_otp_email, identifier, otp_code, user_name)
+        logger.info("[AUTH] OTP generated; queued background email task for %s", identifier)
     else:
-        sent = send_sms(identifier, otp_message)
-        logger.info("[AUTH] OTP SMS %s for %s", "sent" if sent else "FAILED (dev mode)", identifier)
+        # SMS sending (currently synchronous call, but added to background task)
+        background_tasks.add_task(send_sms, identifier, otp_message)
+        logger.info("[AUTH] OTP generated; queued background SMS task for %s", identifier)
 
-    # TODO: REMOVE BEFORE PRODUCTION DEPLOYMENT
-    if not sent or os.getenv("ENVIRONMENT") != "production":
+    # Dev/Local output preserved
+    if os.getenv("ENVIRONMENT") != "production":
         print(f"\n[DEV MODE] DEV OTP for {identifier}: {otp_code}\n")
 
-    response = {
-        "message": "OTP generated successfully.",
+    return {
+        "success": True,
+        "message": "OTP sent successfully.",
         "expires_in_seconds": expiry_min * 60,
     }
 
-    # Raise error if real delivery failed (never fall back silently in production)
-    if not sent and os.getenv("ENVIRONMENT") == "production":
-        raise HTTPException(
-            status_code=500,
-            detail="Email or SMS service not configured. Please contact support."
-        )
-
-    if user is None:
-        # Don't expose that user doesn't exist, but log it
-        logger.warning("[AUTH] OTP requested for unregistered identifier: %s", identifier)
-
-    return response
 
 
 @router.post("/verify-otp")

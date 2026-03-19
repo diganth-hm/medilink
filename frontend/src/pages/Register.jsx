@@ -64,6 +64,7 @@ export default function Register() {
   const [countdown, setCountdown] = useState(60)
   const [isOtpSuccess, setIsOtpSuccess] = useState(false)
   const [isOtpFailed, setIsOtpFailed] = useState(false)
+  const [otpArriving, setOtpArriving] = useState(false)
   
   const otpRefs = useRef([])
   const timers = useRef({})
@@ -147,19 +148,28 @@ export default function Register() {
          sendPromises.push(axios.post(`${API_URL}/auth/send-otp`, { identifier: fullPhone, channel: 'sms' }))
       }
 
-      await Promise.all(sendPromises)
+      const responses = await Promise.all(sendPromises)
       
-      setStep('otp')
-      setCountdown(60)
-      setOtp(['', '', '', '', '', ''])
-      setDisplayOtp(['', '', '', '', '', ''])
-      
-      // Focus first OTP input dynamically after state flips
-      setTimeout(() => otpRefs.current[0]?.focus(), 100)
+      // If any request returned status 200, transition immediately
+      if (responses.some(r => r.status === 200 || r.data?.success)) {
+        setStep('otp')
+        setOtpArriving(true)
+        setCountdown(60)
+        setOtp(['', '', '', '', '', ''])
+        setDisplayOtp(['', '', '', '', '', ''])
+        
+        // Clear the arriving message after 10 seconds
+        setTimeout(() => setOtpArriving(false), 10000)
+
+        // Focus first OTP input dynamically after state flips
+        setTimeout(() => otpRefs.current[0]?.focus(), 300)
+      } else {
+        throw new Error('Failed to send OTP')
+      }
 
     } catch (err) {
       console.error(err)
-      toast.error(err.response?.data?.detail || 'Failed to send OTP. Please try again.')
+      toast.error(err.response?.data?.detail || err.message || 'Failed to send OTP. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -551,9 +561,22 @@ export default function Register() {
         <div className={`transition-all duration-500 transform absolute top-0 left-0 right-0 ${step === 'otp' ? 'translate-y-0 opacity-100 scale-100 pointer-events-auto' : 'translate-y-32 opacity-0 scale-95 pointer-events-none'}`}>
           <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-8 shadow-2xl text-center">
              <h2 className="text-[20px] font-bold text-[var(--text-primary)] mb-2">Enter Verification Code</h2>
-             <p className="text-[13px] text-[var(--text-secondary)] mb-8">
+             <p className="text-[13px] text-[var(--text-secondary)] mb-4">
                {maskEmailPhoneText()}
              </p>
+
+             {otpArriving && (
+               <div className="flex items-center justify-center gap-2 mb-6 animate-pulse">
+                 <div className="flex gap-1">
+                   <div className="w-1 h-1 bg-red-500 rounded-full animate-bounce" style={{ animationDelay: '0s' }} />
+                   <div className="w-1 h-1 bg-red-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
+                   <div className="w-1 h-1 bg-red-500 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }} />
+                 </div>
+                 <span className="text-[13px] text-[var(--text-secondary)]">
+                   OTP is on its way — check your inbox in a few seconds
+                 </span>
+               </div>
+             )}
 
              <div className={`flex justify-center gap-2.5 mb-8 relative ${isOtpFailed ? 'animate-otpShake' : ''}`} onPaste={handleOtpPaste}>
                {isOtpSuccess && (
