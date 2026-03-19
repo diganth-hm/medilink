@@ -144,6 +144,59 @@ def _build_otp_email(otp: str, expiry_minutes: int = 5):
     return subject, html, plain
 
 
+async def send_otp_email(to_email: str, otp: str, name: str):
+    """Asynchronous OTP email delivery with rich HTML template."""
+    try:
+        smtp_user = os.getenv("SMTP_USER")
+        smtp_pass = os.getenv("SMTP_PASS")
+        smtp_host = os.getenv("SMTP_HOST", "smtp.gmail.com")
+        try:
+            smtp_port = int(os.getenv("SMTP_PORT", "587"))
+        except (TypeError, ValueError):
+            smtp_port = 587
+
+        if not smtp_user or not smtp_pass:
+            print(f"[ERROR] SMTP credentials missing. SMTP_USER={smtp_user}, SMTP_PASS={'set' if smtp_pass else 'MISSING'}")
+            raise ValueError("SMTP credentials not configured")
+
+        print(f"[DEBUG] Sending OTP email to {to_email} via {smtp_user}")
+
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = "Your MediLink Verification Code"
+        msg["From"] = f"MediLink <{smtp_user}>"
+        msg["To"] = to_email
+
+        html_content = f"""
+        <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; padding: 32px; background: #0A1628; color: #ffffff; border-radius: 12px;">
+            <div style="margin-bottom: 24px;">
+                <span style="font-size: 24px; font-weight: 700; color: #ffffff;">medi</span>
+                <span style="font-size: 24px; font-weight: 700; color: #E5341A;">link</span>
+            </div>
+            <p style="font-size: 16px; color: #8899BB;">Hello {name},</p>
+            <p style="font-size: 16px; color: #ffffff;">Your verification code is:</p>
+            <div style="background: #111D30; border: 1px solid rgba(229,52,26,0.3); border-radius: 12px; padding: 24px; text-align: center; margin: 24px 0;">
+                <span style="font-size: 42px; font-weight: 700; color: #E5341A; letter-spacing: 12px;">{otp}</span>
+            </div>
+            <p style="font-size: 13px; color: #8899BB;">This code expires in 10 minutes. Do not share it with anyone.</p>
+        </div>
+        """
+
+        msg.attach(MIMEText(html_content, "html"))
+
+        server = smtplib.SMTP(smtp_host, smtp_port)
+        server.starttls()
+        server.login(smtp_user, smtp_pass)
+        server.sendmail(smtp_user, to_email, msg.as_string())
+        server.quit()
+
+        print(f"[DEBUG] Email sent successfully to {to_email}")
+        return True
+
+    except Exception as e:
+        print(f"[ERROR] Failed to send email to {to_email}: {str(e)}")
+        raise e
+
+
 def send_email(to_email: str, subject: str, body: str) -> bool:
     """
     Public API — send an email.

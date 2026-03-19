@@ -75,12 +75,16 @@ def login(user_data: UserLogin, db: Session = Depends(get_db)):
 
 
 @router.post("/send-otp")
-def send_otp_route(request: OTPRequest, db: Session = Depends(get_db)):
+async def send_otp_route(request: OTPRequest, db: Session = Depends(get_db)):
     """
     Generate a 6-digit OTP for the given email or mobile number.
     The OTP is bcrypt-hashed in storage and delivered via SMTP/SMS.
     In dev mode (no credentials configured), the OTP appears in server logs.
     """
+    print(f"[DEBUG] send-otp called")
+    print(f"[DEBUG] SMTP_USER present: {bool(os.getenv('SMTP_USER'))}")
+    print(f"[DEBUG] SMTP_PASS present: {bool(os.getenv('SMTP_PASS'))}")
+    
     print(f"[DEBUG] send-otp called with data: {request}")
     identifier = request.identifier.strip()
 

@@ -95,37 +95,20 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Highly permissive CORS for development/deployment testing
+# Explicit CORS configuration for production and local development
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
+    allow_origins=[
+        "https://medilink-1hjl.vercel.app",
+        "http://localhost:3000",
+        "http://localhost:5173",
+    ],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["*"]
 )
 
-@app.middleware("http")
-async def cors_and_error_middleware(request: Request, call_next):
-    if request.method == "OPTIONS":
-        return JSONResponse(
-            content={"detail": "OK"},
-            headers={
-                "Access-Control-Allow-Origin": "*",
-                "Access-Control-Allow-Methods": "*",
-                "Access-Control-Allow-Headers": "*",
-            }
-        )
-    try:
-        response = await call_next(request)
-        response.headers["Access-Control-Allow-Origin"] = "*"
-        return response
-    except Exception as e:
-        return JSONResponse(
-            status_code=500,
-            content={"detail": f"Server Crash: {str(e)}"},
-            headers={"Access-Control-Allow-Origin": "*"}
-        )
+# Removed custom middleware to allow CORSMiddleware to handle headers correctly
 
 @app.get("/seed")
 def manual_seed(db: Session = Depends(get_db)):
