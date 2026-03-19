@@ -25,11 +25,11 @@ function DeliveryCard({ link }) {
       <div className="flex items-center gap-2">
         <span className="text-xl">{link.icon}</span>
         <div>
-          <div className="font-semibold text-slate-100 group-hover:text-white text-sm">
+          <div className="font-semibold text-primary group-hover:text-primary text-sm">
             {link.name}
           </div>
           {link.delivery_time && (
-            <div className="text-xs text-slate-400">{link.delivery_time}</div>
+            <div className="text-xs text-secondary">{link.delivery_time}</div>
           )}
         </div>
       </div>
@@ -44,7 +44,7 @@ function ConfirmButton({ onConfirm, loading }) {
     <button
       onClick={onConfirm}
       disabled={loading}
-      className="mt-3 w-full bg-green-600 hover:bg-green-500 disabled:opacity-50 text-white font-semibold py-2.5 px-4 rounded-xl transition-colors flex items-center justify-center gap-2 text-sm"
+      className="mt-3 w-full bg-green-600 hover:bg-green-500 disabled:opacity-50 text-primary font-semibold py-2.5 px-4 rounded-xl transition-colors flex items-center justify-center gap-2 text-sm"
     >
       ✅ Confirm Order
     </button>
@@ -63,8 +63,8 @@ function MessageBubble({ msg, onConfirm, loading, orderState }) {
       </div>
       <div className={`rounded-2xl px-4 py-3 text-sm leading-relaxed ${
         isUser
-          ? 'bg-blue-600 text-white rounded-tr-sm max-w-lg whitespace-pre-wrap'
-          : 'bg-slate-800 text-slate-100 rounded-tl-sm max-w-lg'
+          ? 'bg-blue-600 text-primary rounded-tr-sm max-w-lg whitespace-pre-wrap'
+          : 'bg-slate-800 text-primary rounded-tl-sm max-w-lg'
       }`}>
         <span dangerouslySetInnerHTML={{
           __html: msg.content
@@ -199,14 +199,14 @@ export default function Chatbot() {
               🤖
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-white tracking-tight">MediLink AI <span className="text-xs font-normal text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-md ml-2 border border-blue-500/20 uppercase tracking-widest">PRO</span></h1>
+              <h1 className="text-2xl font-bold text-primary tracking-tight">MediLink AI <span className="text-xs font-normal text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-md ml-2 border border-blue-500/20 uppercase tracking-widest">PRO</span></h1>
               <div className="flex items-center gap-3 flex-wrap mt-1">
                 <div className="flex items-center gap-2">
                   <div className="w-2.5 h-2.5 bg-green-400 rounded-full animate-pulse shadow-[0_0_8px_rgba(74,222,128,0.5)]" />
                   <span className="text-green-400 text-sm font-medium">Assistant Online</span>
                 </div>
                 {locationLoading ? (
-                  <span className="text-xs text-slate-500 flex items-center gap-1 animate-pulse">
+                  <span className="text-xs text-secondary flex items-center gap-1 animate-pulse">
                      📍 Locating...
                   </span>
                 ) : coords ? (
@@ -217,7 +217,7 @@ export default function Chatbot() {
               </div>
             </div>
           </div>
-          <button onClick={() => setMessages([messages[0]])} className="p-3 bg-slate-800/50 hover:bg-red-500/20 rounded-xl border border-slate-700 hover:border-red-500/50 text-slate-400 hover:text-red-400 transition-all z-10" title="Clear Chat">
+          <button onClick={() => setMessages([messages[0]])} className="p-3 bg-slate-800/50 hover:bg-red-500/20 rounded-xl border border-slate-700 hover:border-red-500/50 text-secondary hover:text-red-400 transition-all z-10" title="Clear Chat">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
             </svg>
@@ -229,7 +229,7 @@ export default function Chatbot() {
           <div className="mb-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
             <div className="flex items-center gap-2 mb-4 px-1">
               <div className="h-px flex-1 bg-gradient-to-r from-transparent via-slate-700 to-transparent" />
-              <p className="text-slate-500 text-[10px] uppercase tracking-[0.2em] font-bold">Recommended Actions</p>
+              <p className="text-secondary text-[10px] uppercase tracking-[0.2em] font-bold">Recommended Actions</p>
               <div className="h-px flex-1 bg-gradient-to-r from-transparent via-slate-700 to-transparent" />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -241,8 +241,8 @@ export default function Chatbot() {
                 >
                   <span className="text-2xl grayscale group-hover:grayscale-0 transition-all duration-300">{s.icon}</span>
                   <div>
-                    <div className="text-slate-200 font-semibold text-sm group-hover:text-blue-400 transition-colors">{s.label}</div>
-                    <div className="text-slate-500 text-xs mt-0.5 line-clamp-1 italic">"{s.text}"</div>
+                    <div className="text-primary font-semibold text-sm group-hover:text-blue-400 transition-colors">{s.label}</div>
+                    <div className="text-secondary text-xs mt-0.5 line-clamp-1 italic">"{s.text}"</div>
                   </div>
                 </button>
               ))}
@@ -300,7 +300,7 @@ export default function Chatbot() {
               }}
               placeholder={placeholder}
               rows={2}
-              className="flex-1 bg-transparent text-white placeholder-slate-500 focus:outline-none text-sm resize-none"
+              className="flex-1 bg-transparent text-primary placeholder-slate-500 focus:outline-none text-sm resize-none"
             />
             <button
               id="chatbot-send"
@@ -308,14 +308,14 @@ export default function Chatbot() {
               disabled={loading || !input.trim()}
               className="w-10 h-10 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 rounded-xl flex items-center justify-center transition-colors flex-shrink-0"
             >
-              <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="w-5 h-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
               </svg>
             </button>
           </div>
         </div>
 
-        <p className="text-center text-xs text-slate-600 mt-2">
+        <p className="text-center text-xs text-secondary mt-2">
           MediLink AI provides general guidance only. Always consult a doctor for serious conditions.
         </p>
       </div>

@@ -57,8 +57,8 @@ export default function QRCodePage() {
   return (
     <div className="min-h-screen pt-24 pb-10 px-4 max-w-2xl mx-auto">
       <div className="mb-8 text-center">
-        <h1 className="text-3xl font-bold text-white mb-2">My Emergency QR Code</h1>
-        <p className="text-slate-400">Share this code with first responders for instant access to your medical profile</p>
+        <h1 className="text-3xl font-bold text-primary mb-2">My Emergency QR Code</h1>
+        <p className="text-secondary">Share this code with first responders for instant access to your medical profile</p>
       </div>
 
       {loading ? (
@@ -73,8 +73,8 @@ export default function QRCodePage() {
               <img src={qrImageUrl} alt="Emergency QR Code" className="w-64 h-64 mx-auto" />
             </div>
 
-            <p className="text-sm text-slate-400 mb-1">Token: <span className="font-mono text-blue-400">{qrInfo.qr_token?.slice(0, 18)}...</span></p>
-            <p className="text-xs text-slate-500 mb-6">Emergency URL: {qrInfo.emergency_url}</p>
+            <p className="text-sm text-secondary mb-1">Token: <span className="font-mono text-blue-400">{qrInfo.qr_token?.slice(0, 18)}...</span></p>
+            <p className="text-xs text-secondary mb-6">Emergency URL: {qrInfo.emergency_url}</p>
 
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <button
@@ -107,7 +107,7 @@ export default function QRCodePage() {
                 { icon: '💳', text: 'Stick it on the back of your ID card' },
                 { icon: '🚑', text: 'In any emergency, responders can scan it instantly — no app needed' },
               ].map((item, i) => (
-                <li key={i} className="flex items-start gap-3 text-slate-300 text-sm">
+                <li key={i} className="flex items-start gap-3 text-secondary text-sm">
                   <span className="text-lg flex-shrink-0">{item.icon}</span>
                   {item.text}
                 </li>
@@ -126,8 +126,8 @@ export default function QRCodePage() {
       ) : (
         <div className="card text-center py-16">
           <div className="text-7xl mb-6">📲</div>
-          <h2 className="text-2xl font-bold text-white mb-3">No QR Code Yet</h2>
-          <p className="text-slate-400 mb-8 max-w-sm mx-auto">
+          <h2 className="text-2xl font-bold text-primary mb-3">No QR Code Yet</h2>
+          <p className="text-secondary mb-8 max-w-sm mx-auto">
             Generate your emergency QR code so responders can instantly access your medical profile.
           </p>
           <button

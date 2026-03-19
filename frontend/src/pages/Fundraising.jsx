@@ -68,8 +68,8 @@ export default function Fundraising() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
           </div>
-          <h2 className="text-2xl font-bold text-white mb-4">Application Received</h2>
-          <p className="text-slate-400 mb-6">
+          <h2 className="text-2xl font-bold text-primary mb-4">Application Received</h2>
+          <p className="text-secondary mb-6">
             Our team member will contact you soon within 12 hours. We will verify all details carefully to ensure there is no fraud or misuse of this system.
           </p>
           <button onClick={() => setSubmitted(false)} className="btn-primary px-8 py-2">Submit Another</button>
@@ -83,19 +83,19 @@ export default function Fundraising() {
       <div className="max-w-4xl mx-auto">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
             <div>
-                <h1 className="text-3xl font-bold text-white mb-2">Medical Fundraising</h1>
-                <p className="text-slate-400">Support for life-critical medical emergencies.</p>
+                <h1 className="text-3xl font-bold text-primary mb-2">Medical Fundraising</h1>
+                <p className="text-secondary">Support for life-critical medical emergencies.</p>
             </div>
             <div className="flex bg-slate-800/50 p-1.5 rounded-2xl border border-slate-700">
                 <button 
                     onClick={() => setActiveTab('apply')}
-                    className={`px-6 py-2 rounded-xl text-sm font-bold transition-all ${activeTab === 'apply' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
+                    className={`px-6 py-2 rounded-xl text-sm font-bold transition-all ${activeTab === 'apply' ? 'bg-blue-600 text-primary shadow-lg' : 'text-secondary hover:text-primary'}`}
                 >
                     Apply Now
                 </button>
                 <button 
                     onClick={() => setActiveTab('my-apps')}
-                    className={`px-6 py-2 rounded-xl text-sm font-bold transition-all ${activeTab === 'my-apps' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
+                    className={`px-6 py-2 rounded-xl text-sm font-bold transition-all ${activeTab === 'my-apps' ? 'bg-blue-600 text-primary shadow-lg' : 'text-secondary hover:text-primary'}`}
                 >
                     My Applications
                 </button>
@@ -104,7 +104,7 @@ export default function Fundraising() {
 
         {activeTab === 'apply' ? (
           <div className="glass p-8 rounded-3xl border border-slate-700/50 shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <h2 className="text-xl font-bold text-white mb-6">New Application</h2>
+            <h2 className="text-xl font-bold text-primary mb-6">New Application</h2>
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
@@ -161,8 +161,8 @@ export default function Fundraising() {
             {myApplications.length === 0 ? (
                 <div className="glass p-12 text-center rounded-3xl border border-slate-800">
                     <span className="text-4xl block mb-4">📄</span>
-                    <h3 className="text-white font-bold">No applications found</h3>
-                    <p className="text-slate-500 text-sm mt-1">You haven't submitted any fundraising requests yet.</p>
+                    <h3 className="text-primary font-bold">No applications found</h3>
+                    <p className="text-secondary text-sm mt-1">You haven't submitted any fundraising requests yet.</p>
                 </div>
             ) : (
                 myApplications.map((app) => (
@@ -172,8 +172,8 @@ export default function Fundraising() {
                                 🏥
                             </div>
                             <div>
-                                <h3 className="text-lg font-bold text-white group-hover:text-blue-400 transition-colors">{app.medical_condition}</h3>
-                                <p className="text-slate-400 text-sm">{app.hospital_name} · ₹{Number(app.estimated_cost).toLocaleString()}</p>
+                                <h3 className="text-lg font-bold text-primary group-hover:text-blue-400 transition-colors">{app.medical_condition}</h3>
+                                <p className="text-secondary text-sm">{app.hospital_name} · ₹{Number(app.estimated_cost).toLocaleString()}</p>
                             </div>
                         </div>
                         <div className="flex items-center gap-4">
@@ -184,7 +184,7 @@ export default function Fundraising() {
                             }`}>
                                 {app.status}
                             </div>
-                            <p className="text-[10px] text-slate-500 font-medium">{new Date(app.created_at).toLocaleDateString()}</p>
+                            <p className="text-[10px] text-secondary font-medium">{new Date(app.created_at).toLocaleDateString()}</p>
                         </div>
                     </div>
                 ))

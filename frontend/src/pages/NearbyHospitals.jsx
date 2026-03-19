@@ -109,21 +109,21 @@ export default function NearbyHospitals() {
         {/* Header */}
         <header className="flex flex-col md:flex-row justify-between items-end gap-4 mb-8">
           <div>
-            <h1 className="text-4xl font-bold text-white mb-3">Nearby Emergency Hospitals</h1>
-            <p className="text-slate-400">Live results based on your GPS position.</p>
+            <h1 className="text-4xl font-bold text-primary mb-3">Nearby Emergency Hospitals</h1>
+            <p className="text-secondary">Live results based on your GPS position.</p>
           </div>
           <div className="flex flex-col gap-2 items-end">
             {coords ? (
               <div className="flex items-center gap-3 px-4 py-2 bg-slate-800/50 rounded-xl border border-slate-700">
                 <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                <span className="text-xs text-slate-300 font-medium tracking-wider uppercase">
+                <span className="text-xs text-secondary font-medium tracking-wider uppercase">
                   📍 {address || `${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)}`}
                 </span>
               </div>
             ) : locationLoading ? (
               <div className="flex items-center gap-2 px-4 py-2 bg-slate-800/50 rounded-xl border border-slate-700">
                 <div className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse" />
-                <span className="text-xs text-slate-400">Detecting location...</span>
+                <span className="text-xs text-secondary">Detecting location...</span>
               </div>
             ) : (
               <div className="flex items-center gap-2 px-4 py-2 bg-red-900/30 rounded-xl border border-red-800">
@@ -131,7 +131,7 @@ export default function NearbyHospitals() {
               </div>
             )}
             {dataSource && (
-              <span className="text-xs text-slate-500">Powered by {dataSource}</span>
+              <span className="text-xs text-secondary">Powered by {dataSource}</span>
             )}
           </div>
         </header>
@@ -162,21 +162,21 @@ export default function NearbyHospitals() {
         ) : hospitals.length === 0 ? (
           <div className="text-center py-20">
             <div className="text-6xl mb-4">🏥</div>
-            <p className="text-slate-400 mb-2">No hospitals found nearby.</p>
-            <p className="text-slate-500 text-sm">Try enabling location access and refreshing.</p>
+            <p className="text-secondary mb-2">No hospitals found nearby.</p>
+            <p className="text-secondary text-sm">Try enabling location access and refreshing.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {hospitals.map((h) => (
               <div key={h.id} className="glass group p-6 rounded-2xl border border-slate-700/50 hover:border-blue-500/30 transition-all flex flex-col">
                 <div className="flex justify-between items-start mb-4">
-                  <h3 className="text-xl font-bold text-white group-hover:text-blue-400 transition-colors leading-tight pr-2">{h.name}</h3>
+                  <h3 className="text-xl font-bold text-primary group-hover:text-blue-400 transition-colors leading-tight pr-2">{h.name}</h3>
                   <span className="text-xs font-bold text-blue-500 bg-blue-500/10 px-2 py-1 rounded flex-shrink-0">{h.dist}</span>
                 </div>
 
                 <div className="space-y-4 flex-1">
-                  <div className="flex gap-3 items-start text-slate-400">
-                    <svg className="w-5 h-5 flex-shrink-0 text-slate-500 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <div className="flex gap-3 items-start text-secondary">
+                    <svg className="w-5 h-5 flex-shrink-0 text-secondary mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                     </svg>
@@ -184,11 +184,11 @@ export default function NearbyHospitals() {
                   </div>
 
                   {h.phone && h.phone !== 'N/A' && (
-                    <div className="flex gap-3 items-center text-slate-400">
-                      <svg className="w-5 h-5 flex-shrink-0 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <div className="flex gap-3 items-center text-secondary">
+                      <svg className="w-5 h-5 flex-shrink-0 text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                       </svg>
-                      <a href={`tel:${h.phone}`} className="text-sm font-medium text-white hover:text-blue-400 transition-colors">{h.phone}</a>
+                      <a href={`tel:${h.phone}`} className="text-sm font-medium text-primary hover:text-blue-400 transition-colors">{h.phone}</a>
                     </div>
                   )}
 
@@ -204,7 +204,7 @@ export default function NearbyHospitals() {
                   {h.phone && h.phone !== 'N/A' && (
                     <a
                       href={`tel:${h.phone}`}
-                      className="btn-ghost border border-slate-700 py-2 px-3 rounded-xl hover:bg-slate-800 flex items-center justify-center gap-1 text-sm text-slate-300 hover:text-white transition-all"
+                      className="btn-ghost border border-slate-700 py-2 px-3 rounded-xl hover:bg-slate-800 flex items-center justify-center gap-1 text-sm text-secondary hover:text-primary transition-all"
                     >
                       📞 Call
                     </a>
@@ -214,7 +214,7 @@ export default function NearbyHospitals() {
                       href={h.maps_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="btn-ghost border border-slate-700 py-2 px-3 rounded-xl hover:bg-slate-800 flex items-center justify-center gap-1 text-sm text-slate-300 hover:text-white transition-all"
+                      className="btn-ghost border border-slate-700 py-2 px-3 rounded-xl hover:bg-slate-800 flex items-center justify-center gap-1 text-sm text-secondary hover:text-primary transition-all"
                     >
                       🗺️ Map
                     </a>
@@ -225,7 +225,7 @@ export default function NearbyHospitals() {
           </div>
         )}
 
-        <div className="mt-12 text-center text-slate-500 text-xs">
+        <div className="mt-12 text-center text-secondary text-xs">
           In case of extreme emergency, call <strong className="text-red-400">108</strong> immediately.
         </div>
       </div>

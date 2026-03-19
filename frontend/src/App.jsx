@@ -3,6 +3,8 @@ import { Toaster } from 'react-hot-toast'
 import { AuthProvider } from './context/AuthContext'
 import { LocationProvider } from './context/LocationContext'
 import Navbar from './components/Navbar'
+import SplashScreen from './components/SplashScreen'
+import AnimatedBackground from './components/AnimatedBackground'
 import ProtectedRoute from './components/ProtectedRoute'
 import Home from './pages/Home'
 import Login from './pages/Login'
@@ -29,6 +31,8 @@ export default function App() {
     <AuthProvider>
       <LocationProvider>
         <BrowserRouter>
+        <AnimatedBackground />
+        <SplashScreen />
         <Navbar />
         <Toaster
           position="top-right"
@@ -43,6 +47,7 @@ export default function App() {
             error: { iconTheme: { primary: '#ef4444', secondary: '#fff' } },
           }}
         />
+        <div style={{ position: 'relative', zIndex: 1 }}>
         <Routes>
           {/* Public routes */}
           <Route path="/" element={<Home />} />
@@ -72,13 +77,14 @@ export default function App() {
             <div className="min-h-screen flex items-center justify-center text-center px-4 pt-16">
               <div>
                 <div className="text-8xl mb-6">🔍</div>
-                <h1 className="text-4xl font-bold text-white mb-3">Page Not Found</h1>
-                <p className="text-slate-400 mb-6">The page you're looking for doesn't exist.</p>
+                <h1 className="text-4xl font-bold text-primary mb-3">Page Not Found</h1>
+                <p className="text-secondary mb-6">The page you're looking for doesn't exist.</p>
                 <a href="/" className="btn-primary px-8 py-3 inline-block">Go Home</a>
               </div>
             </div>
           } />
         </Routes>
+        </div>
       </BrowserRouter>
       </LocationProvider>
     </AuthProvider>

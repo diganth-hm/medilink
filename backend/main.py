@@ -55,13 +55,9 @@ def run_migrations():
         except Exception:
             conn.rollback()
             
-        # Widen otp_code column to accommodate bcrypt hashes
-        try:
-            conn.execute(text("ALTER TABLE otp_records MODIFY COLUMN otp_code VARCHAR(100)"))
-            conn.commit()
-            print("Successfully widened otp_code column.")
-        except Exception:
-            conn.rollback()  # SQLite uses different syntax — handled below
+        # Widen otp_code column (if needed) -- Note: SQLite VARCHAR length is not enforced, 
+        # so MODIFY COLUMN is skipable. MySQL syntax 'MODIFY COLUMN' is removed.
+        pass
         try:
             # SQLite-compatible: recreate isn't needed if column is already wide
             pass

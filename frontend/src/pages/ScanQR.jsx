@@ -75,8 +75,8 @@ export default function ScanQR() {
         <div className="w-16 h-16 bg-gradient-to-br from-red-500 to-orange-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-xl">
           <span className="text-3xl">📷</span>
         </div>
-        <h1 className="text-3xl font-bold text-white mb-2">Scan QR Code</h1>
-        <p className="text-slate-400">Scan a patient's MediLink QR code to access their medical profile</p>
+        <h1 className="text-3xl font-bold text-primary mb-2">Scan QR Code</h1>
+        <p className="text-secondary">Scan a patient's MediLink QR code to access their medical profile</p>
       </div>
 
       {/* Camera Section */}
@@ -88,7 +88,7 @@ export default function ScanQR() {
             <div className="w-32 h-32 border-4 border-dashed border-slate-600 rounded-2xl flex items-center justify-center mx-auto mb-6">
               <span className="text-5xl">📷</span>
             </div>
-            <p className="text-slate-400 text-sm mb-6">Point your camera at a MediLink QR code</p>
+            <p className="text-secondary text-sm mb-6">Point your camera at a MediLink QR code</p>
             <button
               id="start-scanner"
               onClick={startScanner}
@@ -112,8 +112,8 @@ export default function ScanQR() {
 
       {/* Manual Entry */}
       <div className="card">
-        <h2 className="text-lg font-bold text-white mb-4">📋 Manual Token Entry</h2>
-        <p className="text-slate-400 text-sm mb-4">Enter the QR token or emergency URL manually</p>
+        <h2 className="text-lg font-bold text-primary mb-4">📋 Manual Token Entry</h2>
+        <p className="text-secondary text-sm mb-4">Enter the QR token or emergency URL manually</p>
         <form onSubmit={handleManualSubmit} className="space-y-3">
           <input
             id="manual-token"

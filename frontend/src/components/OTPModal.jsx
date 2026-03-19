@@ -120,7 +120,7 @@ export default function OTPModal({ isOpen, identifier, onVerifySuccess, onClose,
       <div className="card w-full max-w-md bg-dark border-border shadow-2xl relative">
         <button 
           onClick={onClose}
-          className="absolute top-4 right-4 text-slate-400 hover:text-white"
+          className="absolute top-4 right-4 text-secondary hover:text-primary"
         >
           ✕
         </button>
@@ -130,7 +130,7 @@ export default function OTPModal({ isOpen, identifier, onVerifySuccess, onClose,
             <div className="w-16 h-16 bg-primary/20 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">
               🛡️
             </div>
-            <h2 className="text-2xl font-bold text-white mb-2">Two-Step Verification</h2>
+            <h2 className="text-2xl font-bold text-primary mb-2">Two-Step Verification</h2>
             <p className="text-muted mb-8">
               {isRegistration ? "Before creating your account, how would you like to receive your verification code?" : "How would you like to receive your login OTP?"}
             </p>
@@ -142,7 +142,7 @@ export default function OTPModal({ isOpen, identifier, onVerifySuccess, onClose,
                 className="w-full p-4 rounded-xl border border-border bg-surface hover:bg-surface/80 hover:border-primary/50 flex items-center justify-center gap-3 transition-all"
               >
                 <span className="text-xl">✉️</span>
-                <span className="font-semibold text-white">Send to Email</span>
+                <span className="font-semibold text-primary">Send to Email</span>
               </button>
               <button
                 onClick={() => handleSendOtp('sms')}
@@ -150,15 +150,15 @@ export default function OTPModal({ isOpen, identifier, onVerifySuccess, onClose,
                 className="w-full p-4 rounded-xl border border-border bg-surface hover:bg-surface/80 hover:border-primary/50 flex items-center justify-center gap-3 transition-all"
               >
                 <span className="text-xl">📱</span>
-                <span className="font-semibold text-white">Send to Mobile Number</span>
+                <span className="font-semibold text-primary">Send to Mobile Number</span>
               </button>
             </div>
           </div>
         ) : (
           <div className="text-center py-4">
-            <h2 className="text-2xl font-bold text-white mb-2">Enter OTP</h2>
+            <h2 className="text-2xl font-bold text-primary mb-2">Enter OTP</h2>
             <p className="text-muted mb-6">
-              Sent to <span className="text-white font-medium">{identifier}</span> via {channel === 'email' ? 'Email' : 'SMS'}
+              Sent to <span className="text-primary font-medium">{identifier}</span> via {channel === 'email' ? 'Email' : 'SMS'}
             </p>
 
             {devOtp && (
@@ -178,7 +178,7 @@ export default function OTPModal({ isOpen, identifier, onVerifySuccess, onClose,
                   value={d}
                   onChange={e => handleDigitChange(e.target.value, i)}
                   onKeyDown={e => handleDigitKeyDown(e, i)}
-                  className={`w-12 h-14 text-center text-xl font-bold rounded-xl border bg-dark text-white focus:outline-none focus:ring-2 transition-all ${
+                  className={`w-12 h-14 text-center text-xl font-bold rounded-xl border bg-dark text-primary focus:outline-none focus:ring-2 transition-all ${
                     d ? 'border-primary ring-primary/30' : 'border-border focus:border-primary'
                   }`}
                 />
@@ -202,7 +202,7 @@ export default function OTPModal({ isOpen, identifier, onVerifySuccess, onClose,
                 <button
                   onClick={() => handleSendOtp(channel)}
                   disabled={loading}
-                  className="text-primary hover:text-white transition-colors font-medium"
+                  className="text-primary hover:text-primary transition-colors font-medium"
                 >
                   Resend OTP
                 </button>
@@ -211,7 +211,7 @@ export default function OTPModal({ isOpen, identifier, onVerifySuccess, onClose,
             
             <button 
               onClick={() => setStep('channel')} 
-              className="text-xs text-muted hover:text-white mt-6 block w-full text-center"
+              className="text-xs text-muted hover:text-primary mt-6 block w-full text-center"
             >
               ← Choose another method
             </button>

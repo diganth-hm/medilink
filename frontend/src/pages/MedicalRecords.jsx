@@ -144,15 +144,15 @@ export default function MedicalRecords() {
             📁
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-white">Medical Records</h1>
-            <p className="text-slate-400 text-sm">Securely upload and manage your hospital documents</p>
+            <h1 className="text-2xl font-bold text-primary">Medical Records</h1>
+            <p className="text-secondary text-sm">Securely upload and manage your hospital documents</p>
           </div>
         </div>
       </div>
 
       {/* Upload Section */}
       <div className="card mb-8">
-        <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+        <h2 className="text-lg font-bold text-primary mb-4 flex items-center gap-2">
           <span>⬆️</span> Upload New Record
         </h2>
 
@@ -178,8 +178,8 @@ export default function MedicalRecords() {
               <div className="text-5xl">
                 {pendingFile.type.startsWith('image/') ? '🖼️' : pendingFile.type === 'application/pdf' ? '📄' : '📝'}
               </div>
-              <p className="text-white font-semibold">{pendingFile.name}</p>
-              <p className="text-slate-400 text-sm">{formatBytes(pendingFile.size)}</p>
+              <p className="text-primary font-semibold">{pendingFile.name}</p>
+              <p className="text-secondary text-sm">{formatBytes(pendingFile.size)}</p>
               <button
                 onClick={(e) => { e.stopPropagation(); setPendingFile(null); setUploadForm(f => ({ ...f, title: '' })) }}
                 className="text-red-400 text-xs hover:text-red-300 mt-1"
@@ -190,9 +190,9 @@ export default function MedicalRecords() {
           ) : (
             <div className="flex flex-col items-center gap-3">
               <div className="text-5xl opacity-60">🗂️</div>
-              <p className="text-white font-semibold">Drag & drop your file here</p>
-              <p className="text-slate-400 text-sm">or <span className="text-indigo-400">click to browse</span></p>
-              <p className="text-slate-500 text-xs mt-1">Supports: JPG, PNG, PDF, DOC, TXT · Max 20MB</p>
+              <p className="text-primary font-semibold">Drag & drop your file here</p>
+              <p className="text-secondary text-sm">or <span className="text-indigo-400">click to browse</span></p>
+              <p className="text-secondary text-xs mt-1">Supports: JPG, PNG, PDF, DOC, TXT · Max 20MB</p>
             </div>
           )}
         </div>
@@ -200,43 +200,43 @@ export default function MedicalRecords() {
         {/* Form fields */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
           <div>
-            <label className="block text-sm text-slate-400 mb-1">Title <span className="text-red-400">*</span></label>
+            <label className="block text-sm text-secondary mb-1">Title <span className="text-red-400">*</span></label>
             <input
               type="text"
               placeholder="e.g. Blood Test Report - March 2025"
               value={uploadForm.title}
               onChange={(e) => setUploadForm(f => ({ ...f, title: e.target.value }))}
-              className="w-full bg-slate-800 border border-slate-600 rounded-xl px-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 text-sm"
+              className="w-full bg-slate-800 border border-slate-600 rounded-xl px-4 py-2.5 text-primary placeholder-slate-500 focus:outline-none focus:border-indigo-500 text-sm"
             />
           </div>
           <div>
-            <label className="block text-sm text-slate-400 mb-1">Description <span className="text-slate-500">(optional)</span></label>
+            <label className="block text-sm text-secondary mb-1">Description <span className="text-secondary">(optional)</span></label>
             <input
               type="text"
               placeholder="e.g. Hemoglobin levels, annual checkup"
               value={uploadForm.description}
               onChange={(e) => setUploadForm(f => ({ ...f, description: e.target.value }))}
-              className="w-full bg-slate-800 border border-slate-600 rounded-xl px-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 text-sm"
+              className="w-full bg-slate-800 border border-slate-600 rounded-xl px-4 py-2.5 text-primary placeholder-slate-500 focus:outline-none focus:border-indigo-500 text-sm"
             />
           </div>
         </div>
 
         <div className="mb-6">
-          <label className="block text-sm text-slate-400 mb-1">Issuing Doctor ID <span className="text-xs text-slate-500">(Required for restricted certificates)</span></label>
+          <label className="block text-sm text-secondary mb-1">Issuing Doctor ID <span className="text-xs text-secondary">(Required for restricted certificates)</span></label>
           <input
             type="text"
             placeholder="e.g. DOC456"
             value={uploadForm.issuing_doctor_code}
             onChange={(e) => setUploadForm(f => ({ ...f, issuing_doctor_code: e.target.value }))}
-            className="w-full bg-slate-800 border border-slate-600 rounded-xl px-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 text-sm"
+            className="w-full bg-slate-800 border border-slate-600 rounded-xl px-4 py-2.5 text-primary placeholder-slate-500 focus:outline-none focus:border-indigo-500 text-sm"
           />
-          <p className="text-[10px] text-slate-500 mt-1 italic">When provided, only you and the specified doctor can access this document.</p>
+          <p className="text-[10px] text-secondary mt-1 italic">When provided, only you and the specified doctor can access this document.</p>
         </div>
 
         {/* Progress bar */}
         {uploading && (
           <div className="mb-4">
-            <div className="flex justify-between text-xs text-slate-400 mb-1">
+            <div className="flex justify-between text-xs text-secondary mb-1">
               <span>Uploading…</span><span>{uploadProgress}%</span>
             </div>
             <div className="w-full bg-slate-700 rounded-full h-2">
@@ -263,21 +263,21 @@ export default function MedicalRecords() {
 
       {/* Records List */}
       <div>
-        <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+        <h2 className="text-lg font-bold text-primary mb-4 flex items-center gap-2">
           <span>📋</span> My Records
-          <span className="ml-auto text-sm font-normal text-slate-400">{records.length} file{records.length !== 1 ? 's' : ''}</span>
+          <span className="ml-auto text-sm font-normal text-secondary">{records.length} file{records.length !== 1 ? 's' : ''}</span>
         </h2>
 
         {loading ? (
-          <div className="text-center py-16 text-slate-400">
+          <div className="text-center py-16 text-secondary">
             <div className="w-8 h-8 border-2 border-slate-600 border-t-indigo-500 rounded-full animate-spin mx-auto mb-3" />
             Loading records…
           </div>
         ) : records.length === 0 ? (
           <div className="card text-center py-16">
             <div className="text-5xl mb-4 opacity-40">📂</div>
-            <p className="text-white font-semibold">No records yet</p>
-            <p className="text-slate-400 text-sm mt-1">Upload your first medical document above</p>
+            <p className="text-primary font-semibold">No records yet</p>
+            <p className="text-secondary text-sm mt-1">Upload your first medical document above</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -289,27 +289,27 @@ export default function MedicalRecords() {
                 <div className="flex items-start gap-3">
                   <div className="text-3xl flex-shrink-0">{FILE_TYPE_ICONS[record.file_type] || '📎'}</div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-white font-semibold truncate">{record.title}</p>
+                    <p className="text-primary font-semibold truncate">{record.title}</p>
                     {record.description && (
-                      <p className="text-slate-400 text-xs mt-0.5 truncate">{record.description}</p>
+                      <p className="text-secondary text-xs mt-0.5 truncate">{record.description}</p>
                     )}
                     <div className="flex items-center gap-3 mt-1.5">
-                      <span className="text-xs text-slate-500">{formatBytes(record.file_size)}</span>
-                      <span className="text-slate-600">·</span>
-                      <span className="text-xs text-slate-500">
+                      <span className="text-xs text-secondary">{formatBytes(record.file_size)}</span>
+                      <span className="text-secondary">·</span>
+                      <span className="text-xs text-secondary">
                         {new Date(record.uploaded_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
                       </span>
                     </div>
                     <div className="flex items-center gap-2 mt-3">
                       <button
                         onClick={() => openPreview(record)}
-                        className="flex-1 text-center py-1.5 px-3 bg-white/10 hover:bg-white/20 text-white text-xs font-medium rounded-lg transition-colors"
+                        className="flex-1 text-center py-1.5 px-3 bg-white/10 hover:bg-white/20 text-primary text-xs font-medium rounded-lg transition-colors"
                       >
                         {record.file_type === 'image' ? '👁️ Preview' : '⬇️ Download'}
                       </button>
                       <button
                         onClick={() => handleDownload(record)}
-                        className="py-1.5 px-3 bg-white/10 hover:bg-white/20 text-white text-xs font-medium rounded-lg transition-colors"
+                        className="py-1.5 px-3 bg-white/10 hover:bg-white/20 text-primary text-xs font-medium rounded-lg transition-colors"
                       >
                         ⬇️
                       </button>
@@ -337,12 +337,12 @@ export default function MedicalRecords() {
           <div className="relative max-w-3xl w-full" onClick={(e) => e.stopPropagation()}>
             <button
               onClick={() => setPreviewRecord(null)}
-              className="absolute -top-4 -right-4 w-10 h-10 bg-slate-800 border border-slate-600 rounded-full text-white hover:bg-slate-700 flex items-center justify-center z-10"
+              className="absolute -top-4 -right-4 w-10 h-10 bg-slate-800 border border-slate-600 rounded-full text-primary hover:bg-slate-700 flex items-center justify-center z-10"
             >
               ✕
             </button>
             <div className="card p-4">
-              <p className="text-white font-semibold mb-3">{previewRecord.title}</p>
+              <p className="text-primary font-semibold mb-3">{previewRecord.title}</p>
               <img
                 src={`/records/${previewRecord.id}/download`}
                 alt={previewRecord.title}

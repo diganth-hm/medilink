@@ -83,11 +83,11 @@ export default function BiometricEnroll() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A10.003 10.003 0 0012 3c1.248 0 2.442.243 3.535.66m-10.44 14.12a10.05 10.05 0 001.373 1.453m10.16-10.16a10.05 10.05 0 011.453 1.373M16.47 16.47a10.05 10.05 0 001.373 1.453m-12.014-4.82a13.31 13.31 0 015.014-5.014m5.24 10.48a13.31 13.31 0 01-5.04 5.04" />
           </svg>
         </div>
-        <h1 className="text-2xl font-bold text-white mb-2">Fingerprint Enrollment</h1>
-        <p className="text-slate-400 mb-8">Secure your account with biometric authentication.</p>
+        <h1 className="text-2xl font-bold text-primary mb-2">Fingerprint Enrollment</h1>
+        <p className="text-secondary mb-8">Secure your account with biometric authentication.</p>
         
         <div className="p-6 bg-slate-800/50 rounded-xl border border-dashed border-slate-600 mb-8">
-          <p className="text-sm text-slate-300">
+          <p className="text-sm text-secondary">
             Please place your finger on the sensor when ready.
           </p>
         </div>

@@ -2,6 +2,7 @@
     "venvPath": "backend",
     "venv": "medilink_venv",
     "include": ["backend"],
+    "extraPaths": ["backend"],
     "executionEnvironments": [
         {
             "root": "backend"

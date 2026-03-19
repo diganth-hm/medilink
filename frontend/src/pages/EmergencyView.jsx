@@ -44,7 +44,7 @@ export default function EmergencyView() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-red-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-slate-400">Loading Emergency Data...</p>
+          <p className="text-secondary">Loading Emergency Data...</p>
         </div>
       </div>
     )
@@ -55,7 +55,7 @@ export default function EmergencyView() {
       <div className="min-h-screen flex items-center justify-center px-4">
         <div className="card text-center max-w-md">
           <div className="text-6xl mb-4">❌</div>
-          <h1 className="text-2xl font-bold text-white mb-3">Access Error</h1>
+          <h1 className="text-2xl font-bold text-primary mb-3">Access Error</h1>
           <p className="text-red-400 mb-6">{error}</p>
           <Link to="/scan" className="btn-primary">← Back to Scanner</Link>
         </div>
@@ -83,9 +83,9 @@ export default function EmergencyView() {
             <span className="text-red-300 text-xs font-bold uppercase tracking-[0.3em]">Emergency Medical Access</span>
             <div className="w-3 h-3 bg-red-400 rounded-full animate-pulse" />
           </div>
-          <h1 className="text-4xl font-black text-white mb-1">{data.patient_name}</h1>
+          <h1 className="text-4xl font-black text-primary mb-1">{data.patient_name}</h1>
           {data.date_of_birth && (
-            <p className="text-slate-400 text-sm">
+            <p className="text-secondary text-sm">
               DOB: {data.date_of_birth} · Age: {new Date().getFullYear() - parseInt(data.date_of_birth?.split('-')[0])}
             </p>
           )}
@@ -93,9 +93,9 @@ export default function EmergencyView() {
 
         {/* BLOOD GROUP — Large Display */}
         <div className="text-center py-10 bg-gradient-to-br from-red-950/50 to-slate-900/50 border-2 border-red-500/40 rounded-2xl mb-6">
-          <p className="text-slate-400 uppercase tracking-[0.3em] text-sm mb-3">Blood Group</p>
+          <p className="text-secondary uppercase tracking-[0.3em] text-sm mb-3">Blood Group</p>
           <div className="emergency-blood-group">{data.blood_group || '?'}</div>
-          {!data.blood_group && <p className="text-slate-500 text-sm mt-2">Not specified</p>}
+          {!data.blood_group && <p className="text-secondary text-sm mt-2">Not specified</p>}
         </div>
 
         {/* CRITICAL CONDITIONS */}
@@ -106,7 +106,7 @@ export default function EmergencyView() {
               {conditions.map((c, i) => (
                 <div key={i} className="bg-red-500/20 border border-red-500/40 rounded-xl py-3 px-4 text-center">
                   <div className="text-2xl mb-1">{c.icon}</div>
-                  <div className="text-sm font-bold text-white">{c.label}</div>
+                  <div className="text-sm font-bold text-primary">{c.label}</div>
                 </div>
               ))}
             </div>
@@ -117,7 +117,7 @@ export default function EmergencyView() {
         {data.allergies && (
           <div className="bg-red-950/50 border-2 border-red-500/60 rounded-2xl p-5 mb-4">
             <h2 className="text-red-400 font-black uppercase tracking-wider text-sm mb-3">⛔ Known Allergies — DO NOT ADMINISTER</h2>
-            <p className="text-white font-bold text-lg leading-relaxed">{data.allergies}</p>
+            <p className="text-primary font-bold text-lg leading-relaxed">{data.allergies}</p>
           </div>
         )}
 
@@ -125,7 +125,7 @@ export default function EmergencyView() {
         {data.current_medications && (
           <div className="card mb-4">
             <h2 className="text-yellow-400 font-bold uppercase tracking-wider text-sm mb-3">💊 Current Medications</h2>
-            <p className="text-slate-200 leading-relaxed">{data.current_medications}</p>
+            <p className="text-primary leading-relaxed">{data.current_medications}</p>
           </div>
         )}
 
@@ -133,7 +133,7 @@ export default function EmergencyView() {
         {data.psychiatric_medications && (
           <div className="card mb-4 border-purple-500/30">
             <h2 className="text-purple-400 font-bold uppercase tracking-wider text-sm mb-3">🧠 Psychiatric Medications</h2>
-            <p className="text-slate-200 leading-relaxed">{data.psychiatric_medications}</p>
+            <p className="text-primary leading-relaxed">{data.psychiatric_medications}</p>
           </div>
         )}
 
@@ -141,15 +141,15 @@ export default function EmergencyView() {
         {data.chronic_conditions && (
           <div className="card mb-4">
             <h2 className="text-orange-400 font-bold uppercase tracking-wider text-sm mb-3">🏥 Chronic Conditions</h2>
-            <p className="text-slate-200 leading-relaxed">{data.chronic_conditions}</p>
+            <p className="text-primary leading-relaxed">{data.chronic_conditions}</p>
           </div>
         )}
 
         {/* SURGICAL HISTORY */}
         {data.surgical_history && (
           <div className="card mb-4">
-            <h2 className="text-slate-400 font-bold uppercase tracking-wider text-sm mb-3">🔪 Surgical History</h2>
-            <p className="text-slate-200 leading-relaxed">{data.surgical_history}</p>
+            <h2 className="text-secondary font-bold uppercase tracking-wider text-sm mb-3">🔪 Surgical History</h2>
+            <p className="text-primary leading-relaxed">{data.surgical_history}</p>
           </div>
         )}
 
@@ -157,7 +157,7 @@ export default function EmergencyView() {
         {data.immunization_records && (
           <div className="card mb-4">
             <h2 className="text-green-400 font-bold uppercase tracking-wider text-sm mb-3">💉 Immunization Records</h2>
-            <p className="text-slate-200 leading-relaxed">{data.immunization_records}</p>
+            <p className="text-primary leading-relaxed">{data.immunization_records}</p>
           </div>
         )}
 
@@ -167,17 +167,17 @@ export default function EmergencyView() {
             <h2 className="text-green-400 font-bold uppercase tracking-wider text-sm mb-4">📞 Emergency Contact</h2>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xl font-bold text-white">{data.emergency_contact_name}</p>
-                <p className="text-slate-400 text-sm">{data.emergency_contact_relation}</p>
+                <p className="text-xl font-bold text-primary">{data.emergency_contact_name}</p>
+                <p className="text-secondary text-sm">{data.emergency_contact_relation}</p>
               </div>
               <a
                 href={`tel:${data.emergency_contact_phone}`}
-                className="flex items-center gap-2 bg-green-600 hover:bg-green-500 text-white font-bold px-5 py-3 rounded-xl transition-colors text-sm"
+                className="flex items-center gap-2 bg-green-600 hover:bg-green-500 text-primary font-bold px-5 py-3 rounded-xl transition-colors text-sm"
               >
                 📱 Call Now
               </a>
             </div>
-            <p className="text-slate-400 mt-2 font-mono">{data.emergency_contact_phone}</p>
+            <p className="text-secondary mt-2 font-mono">{data.emergency_contact_phone}</p>
           </div>
         )}
 
@@ -187,12 +187,12 @@ export default function EmergencyView() {
             <h2 className="text-blue-400 font-bold uppercase tracking-wider text-sm mb-4">🩺 Primary Doctor</h2>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-lg font-bold text-white">{data.doctor_name}</p>
-                <p className="text-slate-400 font-mono text-sm">{data.doctor_phone}</p>
+                <p className="text-lg font-bold text-primary">{data.doctor_name}</p>
+                <p className="text-secondary font-mono text-sm">{data.doctor_phone}</p>
               </div>
               <a
                 href={`tel:${data.doctor_phone}`}
-                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-bold px-4 py-2.5 rounded-xl transition-colors text-sm"
+                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-primary font-bold px-4 py-2.5 rounded-xl transition-colors text-sm"
               >
                 📱 Call
               </a>
@@ -204,12 +204,12 @@ export default function EmergencyView() {
         <button
           id="get-ai-guidance"
           onClick={() => setShowChat(true)}
-          className="w-full py-4 rounded-2xl bg-gradient-to-r from-orange-600 to-red-600 text-white font-black text-lg shadow-xl hover:shadow-red-500/30 hover:scale-105 transition-all duration-200 flex items-center justify-center gap-3"
+          className="w-full py-4 rounded-2xl bg-gradient-to-r from-orange-600 to-red-600 text-primary font-black text-lg shadow-xl hover:shadow-red-500/30 hover:scale-105 transition-all duration-200 flex items-center justify-center gap-3"
         >
           🤖 Get AI Emergency Guidance
         </button>
 
-        <p className="text-center text-slate-500 text-xs mt-4">
+        <p className="text-center text-secondary text-xs mt-4">
           MediLink Emergency Access · No login required · Data is read-only
         </p>
       </div>

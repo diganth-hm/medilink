@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 60">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@700&amp;display=swap');
+      .shield { fill: transparent; stroke: none; }
+      .cross { fill: #E5341A; }
+      .medi { fill: #FFFFFF; font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 22px; }
+      .link { fill: #E5341A; font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 22px; }
+      .ecg-line { fill: none; stroke: #E5341A; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    </style>
+  </defs>
+  <!-- Hexagonal Shield Icon -->
+  <path class="cross" d="M12 2L2 7v6.5c0 5.55 3.84 10.74 9 12.13 5.16-1.39 9-6.58 9-12.13V7L12 2zm1 14h-2v-3H8v-2h3V8h2v3h3v2h-3v3z" transform="translate(10, 12) scale(1.5)"/>
+  
+  <!-- Wordmark -->
+  <text x="55" y="42" class="medi">medi</text>
+  <text x="105" y="42" class="link">link</text>
+  
+  <!-- ECG Line (for animation) -->
+  <path class="ecg-line" d="M160 40 L170 40 L175 25 L180 50 L185 40 L200 40 L205 35 L210 40 L220 40" />
+</svg>

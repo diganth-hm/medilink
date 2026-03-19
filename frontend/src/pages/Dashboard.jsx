@@ -105,15 +105,15 @@ export default function Dashboard() {
       {/* Welcome */}
       <div className="mb-10">
         <div className="flex items-center gap-3 mb-2">
-          <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-violet-600 rounded-full flex items-center justify-center text-xl font-bold text-white shadow-lg">
+          <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-violet-600 rounded-full flex items-center justify-center text-xl font-bold text-primary shadow-lg">
             {user?.name?.[0]?.toUpperCase()}
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-white">Welcome, {user?.name}!</h1>
+            <h1 className="text-2xl font-bold text-primary">Welcome, {user?.name}!</h1>
             <span className="badge-blue capitalize">{user?.role}</span>
           </div>
         </div>
-        <p className="text-slate-400 mt-2 ml-15">Manage your emergency medical profile</p>
+        <p className="text-secondary mt-2 ml-15">Manage your emergency medical profile</p>
       </div>
 
       {user?.role === 'doctor' && (
@@ -155,7 +155,7 @@ export default function Dashboard() {
               <p className="text-sm opacity-80">You have administrative rights to verify medical professionals and fundraising applications.</p>
             </div>
           </div>
-          <Link to="/doctor-verification" className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2.5 rounded-xl font-bold transition-all whitespace-nowrap text-center">
+          <Link to="/doctor-verification" className="bg-blue-600 hover:bg-blue-500 text-primary px-6 py-2.5 rounded-xl font-bold transition-all whitespace-nowrap text-center">
             Review Applications →
           </Link>
         </div>
@@ -168,9 +168,9 @@ export default function Dashboard() {
             <div className="flex items-start gap-3">
               <div className="text-3xl">{s.icon}</div>
               <div>
-                <p className="text-xs text-slate-400 uppercase tracking-wider">{s.label}</p>
-                <p className="text-2xl font-bold text-white">{s.value}</p>
-                <p className="text-xs text-slate-400 mt-0.5">{s.sub}</p>
+                <p className="text-xs text-secondary uppercase tracking-wider">{s.label}</p>
+                <p className="text-2xl font-bold text-primary">{s.value}</p>
+                <p className="text-xs text-secondary mt-0.5">{s.sub}</p>
               </div>
             </div>
           </Link>
@@ -178,7 +178,7 @@ export default function Dashboard() {
       </div>
 
       {/* Quick Actions */}
-      <h2 className="text-xl font-bold text-white mb-4">Quick Actions</h2>
+      <h2 className="text-xl font-bold text-primary mb-4">Quick Actions</h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
         {[
           {
@@ -256,11 +256,11 @@ export default function Dashboard() {
         ].map((action, i) => (
           <div key={i} className="card-hover flex flex-col">
             <div className="text-4xl mb-3">{action.icon}</div>
-            <h3 className="font-bold text-white mb-2">{action.title}</h3>
-            <p className="text-slate-400 text-sm flex-1 mb-4">{action.desc}</p>
+            <h3 className="font-bold text-primary mb-2">{action.title}</h3>
+            <p className="text-secondary text-sm flex-1 mb-4">{action.desc}</p>
             <Link
               to={action.link}
-              className={`inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-gradient-to-r ${action.gradient} text-white font-semibold text-sm hover:opacity-90 transition-opacity`}
+              className={`inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-gradient-to-r ${action.gradient} text-primary font-semibold text-sm hover:opacity-90 transition-opacity`}
             >
               {action.btn} →
             </Link>
@@ -273,8 +273,8 @@ export default function Dashboard() {
         <div className="flex items-start gap-4">
           <div className="text-4xl">🚨</div>
           <div>
-            <h3 className="text-lg font-bold text-white mb-1">Emergency Responder Tools</h3>
-            <p className="text-slate-400 text-sm mb-4">Scan a patient's QR code to instantly access their medical information — no login required</p>
+            <h3 className="text-lg font-bold text-primary mb-1">Emergency Responder Tools</h3>
+            <p className="text-secondary text-sm mb-4">Scan a patient's QR code to instantly access their medical information — no login required</p>
             <Link to="/scan" className="btn-danger text-sm px-5 py-2.5 inline-flex items-center gap-2">
               📷 Scan Patient QR Code
             </Link>

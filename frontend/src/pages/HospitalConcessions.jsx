@@ -12,8 +12,8 @@ export default function HospitalConcessions() {
     <div className="min-h-screen pt-24 pb-12 px-4">
       <div className="max-w-5xl mx-auto">
         <header className="mb-12">
-          <h1 className="text-4xl font-bold text-white mb-3">Medical Bill Concessions</h1>
-          <p className="text-slate-400">Find nearby hospitals offering concessions and apply for government healthcare schemes.</p>
+          <h1 className="text-4xl font-bold text-primary mb-3">Medical Bill Concessions</h1>
+          <p className="text-secondary">Find nearby hospitals offering concessions and apply for government healthcare schemes.</p>
         </header>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -24,8 +24,8 @@ export default function HospitalConcessions() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                 </svg>
               </div>
-              <h3 className="text-xl font-bold text-white mb-2">{h.name}</h3>
-              <div className="inline-block px-3 py-1 rounded-full bg-slate-800 text-xs font-medium text-slate-300 mb-4 border border-slate-700">
+              <h3 className="text-xl font-bold text-primary mb-2">{h.name}</h3>
+              <div className="inline-block px-3 py-1 rounded-full bg-slate-800 text-xs font-medium text-secondary mb-4 border border-slate-700">
                 {h.type}
               </div>
               
@@ -36,7 +36,7 @@ export default function HospitalConcessions() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                   </svg>
                 </a>
-                <a href={h.website} target="_blank" rel="noreferrer" className="block text-center text-sm text-slate-400 hover:text-white transition-colors">
+                <a href={h.website} target="_blank" rel="noreferrer" className="block text-center text-sm text-secondary hover:text-primary transition-colors">
                   Visit Official Website
                 </a>
               </div>
@@ -47,14 +47,14 @@ export default function HospitalConcessions() {
         <section className="mt-16 p-8 glass rounded-3xl border border-blue-500/20 bg-blue-500/5">
           <div className="flex flex-col md:flex-row items-center gap-8">
             <div className="flex-1">
-              <h2 className="text-2xl font-bold text-white mb-4">Ayushman Bharat (PM-JAY)</h2>
-              <p className="text-slate-300 mb-6 font-light leading-relaxed">
+              <h2 className="text-2xl font-bold text-primary mb-4">Ayushman Bharat (PM-JAY)</h2>
+              <p className="text-secondary mb-6 font-light leading-relaxed">
                 The world's largest health insurance/assurance scheme fully financed by the government. It provides a cover of Rs. 5 lakhs per family per year for secondary and tertiary care hospitalization across public and private empanelled hospitals in India.
               </p>
               <a href="https://pmjay.gov.in/" className="btn-secondary px-8 py-3">Learn More</a>
             </div>
             <div className="w-32 h-32 md:w-48 md:h-48 bg-white/10 rounded-full flex items-center justify-center border border-white/20">
-               <span className="text-white text-lg font-bold">PM-JAY</span>
+               <span className="text-primary text-lg font-bold">PM-JAY</span>
             </div>
           </div>
         </section>

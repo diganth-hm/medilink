@@ -27,8 +27,8 @@ export default function MedicalIDCard() {
   return (
     <div className="min-h-screen pt-24 pb-12 px-4 flex flex-col items-center">
       <div className="max-w-md w-full mb-8">
-        <h1 className="text-3xl font-bold text-white mb-2">Digital Medical ID</h1>
-        <p className="text-slate-400">Your secure digital identity for medical emergencies. You can download this and keep it as a physical card or on your phone lock screen.</p>
+        <h1 className="text-3xl font-bold text-primary mb-2">Digital Medical ID</h1>
+        <p className="text-secondary">Your secure digital identity for medical emergencies. You can download this and keep it as a physical card or on your phone lock screen.</p>
       </div>
 
       {/* ID Card */}
@@ -43,11 +43,11 @@ export default function MedicalIDCard() {
         <div className="flex justify-between items-start z-10">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
-              <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="w-5 h-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
               </svg>
             </div>
-            <span className="font-bold text-white tracking-tight">MediLink</span>
+            <span className="font-bold text-primary tracking-tight">MediLink</span>
           </div>
           <span className="text-[10px] uppercase tracking-[0.2em] text-blue-400 font-bold">Emergency Card</span>
         </div>
@@ -57,16 +57,16 @@ export default function MedicalIDCard() {
             <QRCode value={qrValue} size={80} level="H" />
           </div>
           <div className="flex-1 flex flex-col justify-center">
-            <h2 className="text-xl font-bold text-white leading-tight">{user?.name || 'Full Name'}</h2>
+            <h2 className="text-xl font-bold text-primary leading-tight">{user?.name || 'Full Name'}</h2>
             <p className="text-blue-300 text-xs font-semibold mb-2">Scan for Emergency Info</p>
             <div className="grid grid-cols-2 gap-x-4 gap-y-1">
                <div>
-                 <p className="text-[8px] uppercase text-slate-500 font-bold">Role</p>
-                 <p className="text-xs text-slate-300 capitalize">{user?.role || 'Patient'}</p>
+                 <p className="text-[8px] uppercase text-secondary font-bold">Role</p>
+                 <p className="text-xs text-secondary capitalize">{user?.role || 'Patient'}</p>
                </div>
                <div>
-                 <p className="text-[8px] uppercase text-slate-500 font-bold">Blood Type</p>
-                 <p className="text-xs text-white font-bold">O+ (Demo)</p>
+                 <p className="text-[8px] uppercase text-secondary font-bold">Blood Type</p>
+                 <p className="text-xs text-primary font-bold">O+ (Demo)</p>
                </div>
             </div>
           </div>
@@ -74,8 +74,8 @@ export default function MedicalIDCard() {
 
         <div className="pt-4 border-t border-white/5 z-10 flex justify-between items-end">
            <div>
-             <p className="text-[8px] uppercase text-slate-500 font-bold">ID Number</p>
-             <p className="text-[10px] text-slate-400 font-mono tracking-widest uppercase">ML-{user?.id || 'XXXXXXX'}</p>
+             <p className="text-[8px] uppercase text-secondary font-bold">ID Number</p>
+             <p className="text-[10px] text-secondary font-mono tracking-widest uppercase">ML-{user?.id || 'XXXXXXX'}</p>
            </div>
            <div className="flex gap-1">
               <div className="w-6 h-4 bg-red-600 rounded-[2px]" />
@@ -94,7 +94,7 @@ export default function MedicalIDCard() {
           </svg>
           Download Card
         </button>
-        <p className="text-center text-xs text-slate-500 italic">
+        <p className="text-center text-xs text-secondary italic">
           This card is protected by end-to-end encryption. Only authorized medical personnel can view the data stored in the QR link.
         </p>
       </div>

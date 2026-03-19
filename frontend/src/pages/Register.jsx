@@ -50,12 +50,12 @@ export default function Register() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div className="w-16 h-16 bg-gradient-to-br from-primary to-slate-800 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-xl">
-            <svg className="w-9 h-9 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="w-9 h-9 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
             </svg>
           </div>
-          <h1 className="text-3xl font-bold text-white">Create Account</h1>
-          <p className="text-slate-400 mt-2">Join MediLink and protect your health information</p>
+          <h1 className="text-3xl font-bold text-primary">Create Account</h1>
+          <p className="text-secondary mt-2">Join MediLink and protect your health information</p>
         </div>
 
         <div className="card">
@@ -105,8 +105,8 @@ export default function Register() {
                     onClick={() => setForm({ ...form, role: r.value })}
                     className={`p-3 rounded-xl border text-left transition-all duration-200 ${
                       form.role === r.value
-                        ? 'border-primary bg-primary/15 text-white'
-                        : 'border-border hover:border-slate-500 text-slate-400'
+                        ? 'border-primary bg-primary/15 text-primary'
+                        : 'border-border hover:border-slate-500 text-secondary'
                     }`}
                   >
                     <div className="text-xl mb-1">{r.icon}</div>
@@ -131,9 +131,9 @@ export default function Register() {
             </button>
           </form>
 
-          <p className="text-center text-slate-400 text-sm mt-6">
+          <p className="text-center text-secondary text-sm mt-6">
             Already have an account?{' '}
-            <Link to="/login" className="text-primary hover:text-white font-medium">Sign in</Link>
+            <Link to="/login" className="text-primary hover:text-primary font-medium">Sign in</Link>
           </p>
         </div>
       </div>

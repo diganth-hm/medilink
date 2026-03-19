@@ -53,28 +53,28 @@ export default function Login() {
         {/* Header */}
         <div className="text-center mb-8">
           <div className="w-16 h-16 bg-gradient-to-br from-primary to-slate-800 rounded-2xl flex items-center justify-center mx-auto mb-4 text-3xl shadow-xl">🏥</div>
-          <h1 className="text-3xl font-bold text-white mb-2">Welcome Back</h1>
-          <p className="text-slate-400">Sign in to your MediLink account</p>
+          <h1 className="text-3xl font-bold text-primary mb-2">Welcome Back</h1>
+          <p className="text-secondary">Sign in to your MediLink account</p>
         </div>
 
         <form onSubmit={handlePasswordSubmit} className="space-y-5">
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2">Email Address</label>
+            <label className="block text-sm font-medium text-secondary mb-2">Email Address</label>
             <input
               type="text"
               required
-              className="input-field w-full outline-none p-3 rounded-xl bg-dark text-white border border-border focus:border-primary"
+              className="input-field w-full outline-none p-3 rounded-xl bg-dark text-primary border border-border focus:border-primary"
               placeholder="john@example.com"
               value={form.email}
               onChange={e => setForm({ ...form, email: e.target.value })}
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2">Password</label>
+            <label className="block text-sm font-medium text-secondary mb-2">Password</label>
             <input
               type="password"
               required
-              className="input-field w-full outline-none p-3 rounded-xl bg-dark text-white border border-border focus:border-primary"
+              className="input-field w-full outline-none p-3 rounded-xl bg-dark text-primary border border-border focus:border-primary"
               placeholder="••••••••"
               value={form.password}
               onChange={e => setForm({ ...form, password: e.target.value })}
@@ -88,11 +88,11 @@ export default function Login() {
             <p className="text-xs text-muted mb-3 text-center uppercase tracking-wider font-bold">⚡ Quick Demo Login</p>
             <div className="flex gap-2 justify-center">
               <button type="button" onClick={() => setForm({ email: 'john.doe@demo.com', password: 'demo1234' })}
-                className="px-3 py-1.5 bg-dark hover:brightness-110 rounded text-xs text-white transition-colors border border-border">
+                className="px-3 py-1.5 bg-dark hover:brightness-110 rounded text-xs text-primary transition-colors border border-border">
                 Patient 1
               </button>
               <button type="button" onClick={() => setForm({ email: 'jane.smith@demo.com', password: 'demo1234' })}
-                className="px-3 py-1.5 bg-dark hover:brightness-110 rounded text-xs text-white transition-colors border border-border">
+                className="px-3 py-1.5 bg-dark hover:brightness-110 rounded text-xs text-primary transition-colors border border-border">
                 Patient 2
               </button>
             </div>
@@ -101,9 +101,9 @@ export default function Login() {
 
         {/* Register link */}
         <div className="mt-8 pt-6 border-t border-border text-center">
-          <p className="text-slate-400">
+          <p className="text-secondary">
             Don't have an account?{' '}
-            <Link to="/register" className="text-primary hover:text-white font-medium transition-colors">
+            <Link to="/register" className="text-primary hover:text-primary font-medium transition-colors">
               Register
             </Link>
           </p>
