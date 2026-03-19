@@ -59,6 +59,11 @@ def _send_via_smtp(to_email: str, subject: str, body_html: str, body_text: str) 
     smtp_host = os.getenv("SMTP_HOST", "smtp.gmail.com")
     smtp_port = int(os.getenv("SMTP_PORT", "587"))
 
+    print(f"[DEBUG] Attempting to send email to: {to_email}")
+    print(f"[DEBUG] SMTP_USER: {smtp_email}")
+    print(f"[DEBUG] SMTP_HOST: {smtp_host}")
+    print(f"[DEBUG] SMTP_PORT: {smtp_port}")
+
     if not smtp_email or not smtp_password:
         logger.error("[EMAIL] SMTP credentials missing in environment.")
         return False
@@ -78,11 +83,13 @@ def _send_via_smtp(to_email: str, subject: str, body_html: str, body_text: str) 
             server.login(smtp_email, smtp_password)
             server.sendmail(smtp_email, to_email, msg.as_string())
 
+        print(f"[DEBUG] Email sent successfully to: {to_email}")
         logger.info("[EMAIL] Sent via SMTP to %s", to_email)
         return True
     except Exception as e:
+        print(f"[ERROR] Email sending failed: {str(e)}")
         logger.error("[EMAIL] SMTP failed for %s: %s", to_email, str(e))
-        return False
+        raise e
 
 
 def _send_via_sendgrid(to_email: str, subject: str, body_html: str, body_text: str) -> bool:
@@ -176,6 +183,10 @@ def _send_via_twilio(phone: str, message: str) -> bool:
     sid = os.getenv("TWILIO_SID", "")
     token = os.getenv("TWILIO_TOKEN", "")
     from_num = os.getenv("TWILIO_FROM", "")
+
+    print(f"[DEBUG] Twilio SID present: {bool(sid)}")
+    print(f"[DEBUG] Twilio TOKEN present: {bool(token)}")
+    print(f"[DEBUG] Twilio FROM: {from_num}")
 
     if not sid or not token or not from_num:
         logger.error("[SMS] Twilio credentials missing in environment.")

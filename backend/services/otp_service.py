@@ -50,6 +50,7 @@ def create_otp(db: Session, identifier: str, channel: str) -> str:
     db.commit()
 
     otp_code = generate_otp()
+    print(f"[DEBUG] Generated OTP: {otp_code} for identifier: {identifier}")
     expires_at = datetime.utcnow() + timedelta(minutes=OTP_EXPIRY_MINUTES)
 
     db_otp = OTPToken(

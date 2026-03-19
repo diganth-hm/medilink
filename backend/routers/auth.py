@@ -81,6 +81,7 @@ def send_otp_route(request: OTPRequest, db: Session = Depends(get_db)):
     The OTP is bcrypt-hashed in storage and delivered via SMTP/SMS.
     In dev mode (no credentials configured), the OTP appears in server logs.
     """
+    print(f"[DEBUG] send-otp called with data: {request}")
     identifier = request.identifier.strip()
 
     # Verify the user exists before sending OTP (security: don't reveal if user exists vs not)
