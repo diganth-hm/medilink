@@ -19,7 +19,7 @@ from models import OTPToken
 
 logger = logging.getLogger("medilink.otp")
 
-OTP_EXPIRY_MINUTES = int(os.getenv("OTP_EXPIRY_MINUTES", "5"))
+OTP_EXPIRY_MINUTES = int(os.getenv("OTP_EXPIRY_MINUTES", "10"))
 MAX_ATTEMPTS = 5
 
 _pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")

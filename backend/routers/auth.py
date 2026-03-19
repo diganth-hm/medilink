@@ -20,7 +20,7 @@ class BiometricEnrollRequest(BaseModel):
 class BiometricVerifyRequest(BaseModel):
     credential_id: str
 
-OTP_EXPIRY_MINUTES = int(os.getenv("OTP_EXPIRY_MINUTES", "5"))
+OTP_EXPIRY_MINUTES = int(os.getenv("OTP_EXPIRY_MINUTES", "10"))
 
 
 @router.post("/register", response_model=Token, status_code=status.HTTP_201_CREATED)
@@ -111,13 +111,17 @@ def send_otp_route(request: OTPRequest, db: Session = Depends(get_db)):
         sent = send_sms(identifier, otp_message)
         logger.info("[AUTH] OTP SMS %s for %s", "sent" if sent else "FAILED (dev mode)", identifier)
 
+    # TODO: REMOVE BEFORE PRODUCTION DEPLOYMENT
+    if not sent or os.getenv("ENVIRONMENT") != "production":
+        print(f"\n[DEV MODE] DEV OTP for {identifier}: {otp_code}\n")
+
     response = {
         "message": "OTP generated successfully.",
         "expires_in_seconds": expiry_min * 60,
     }
 
     # Raise error if real delivery failed (never fall back silently in production)
-    if not sent:
+    if not sent and os.getenv("ENVIRONMENT") == "production":
         raise HTTPException(
             status_code=500,
             detail="Email or SMS service not configured. Please contact support."

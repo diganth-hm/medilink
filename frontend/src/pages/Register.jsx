@@ -61,7 +61,9 @@ export default function Register() {
   const [step, setStep] = useState('form') // 'form' | 'otp'
   const [otp, setOtp] = useState(['', '', '', '', '', ''])
   const [displayOtp, setDisplayOtp] = useState(['', '', '', '', '', ''])
-  const [countdown, setCountdown] = useState(30)
+  const [countdown, setCountdown] = useState(60)
+  const [isOtpSuccess, setIsOtpSuccess] = useState(false)
+  const [isOtpFailed, setIsOtpFailed] = useState(false)
   
   const otpRefs = useRef([])
   const timers = useRef({})
@@ -107,6 +109,14 @@ export default function Register() {
     return () => clearTimeout(t)
   }, [step, countdown])
 
+  // Auto-submit OTP when 6 digits are entered
+  useEffect(() => {
+    const otpCode = otp.join('')
+    if (step === 'otp' && otpCode.length === 6 && !loading && !isOtpSuccess) {
+      submitOtp()
+    }
+  }, [otp, step, loading, isOtpSuccess])
+
   // ---- FORM HANDLER ----
   const handleContinue = async (e) => {
     e.preventDefault()
@@ -140,7 +150,7 @@ export default function Register() {
       await Promise.all(sendPromises)
       
       setStep('otp')
-      setCountdown(30)
+      setCountdown(60)
       setOtp(['', '', '', '', '', ''])
       setDisplayOtp(['', '', '', '', '', ''])
       
@@ -244,15 +254,22 @@ export default function Register() {
 
       const res = await axios.post(`${API_URL}/auth/register`, registerPayload)
       
-      toast.success('🎉 Welcome to MediLink!')
-      login(res.data.access_token, res.data.user)
-      navigate('/dashboard')
+      setIsOtpSuccess(true)
+      setTimeout(() => {
+        toast.success('🎉 Welcome to MediLink!')
+        login(res.data.access_token, res.data.user)
+        navigate('/dashboard')
+      }, 1000)
 
     } catch (err) {
-      toast.error(err.response?.data?.detail || 'Invalid OTP or registration failed.')
-      setOtp(['', '', '', '', '', ''])
-      setDisplayOtp(['', '', '', '', '', ''])
-      otpRefs.current[0]?.focus()
+      setIsOtpFailed(true)
+      toast.error(err.response?.data?.detail || 'Incorrect OTP. Please try again.')
+      setTimeout(() => {
+        setOtp(['', '', '', '', '', ''])
+        setDisplayOtp(['', '', '', '', '', ''])
+        setIsOtpFailed(false)
+        otpRefs.current[0]?.focus()
+      }, 500)
     } finally {
       setLoading(false)
     }
@@ -267,7 +284,7 @@ export default function Register() {
       await Promise.all(sendPromises)
       
       toast.success('OTP resent successfully')
-      setCountdown(30)
+      setCountdown(60)
     } catch (err) {
       toast.error('Failed to resend OTP')
     } finally {
@@ -538,7 +555,16 @@ export default function Register() {
                {maskEmailPhoneText()}
              </p>
 
-             <div className="flex justify-center gap-2.5 mb-8" onPaste={handleOtpPaste}>
+             <div className={`flex justify-center gap-2.5 mb-8 relative ${isOtpFailed ? 'animate-otpShake' : ''}`} onPaste={handleOtpPaste}>
+               {isOtpSuccess && (
+                 <div className="absolute inset-0 flex items-center justify-center z-10 animate-fade-in pointer-events-none">
+                   <div className="w-16 h-16 bg-[#1D9E75] rounded-full flex items-center justify-center shadow-lg">
+                     <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                       <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                     </svg>
+                   </div>
+                 </div>
+               )}
                {otp.map((_, i) => (
                   <input
                     key={i}
@@ -551,9 +577,15 @@ export default function Register() {
                     onKeyDown={e => handleOtpKeyDown(e, i)}
                     onFocus={() => handleOtpFocus(i)}
                     onBlur={() => handleOtpBlur(i)}
-                    className="w-[48px] h-[56px] text-center text-[22px] font-bold rounded-[12px] border-[1.5px] border-[var(--border)] bg-[var(--bg-card)] text-[var(--text-primary)] focus:outline-none focus:border-[#E5341A] transition-all"
+                    className={`w-[48px] h-[56px] text-center text-[22px] font-bold rounded-[12px] border-[1.5px] bg-[var(--bg-card)] focus:outline-none transition-all ${
+                      isOtpSuccess 
+                        ? 'border-[#1D9E75] bg-[#1D9E75]/10 text-[#1D9E75]' 
+                        : isOtpFailed
+                        ? 'border-[#E5341A] text-[#E5341A]'
+                        : 'border-[var(--border)] text-[var(--text-primary)] focus:border-[#E5341A]'
+                    }`}
                     style={{
-                      boxShadow: document.activeElement === otpRefs.current[i] ? '0 0 0 3px rgba(229,52,26,0.15)' : 'none'
+                      boxShadow: !isOtpSuccess && !isOtpFailed && document.activeElement === otpRefs.current[i] ? '0 0 0 3px rgba(229,52,26,0.15)' : 'none'
                     }}
                   />
                ))}
@@ -621,6 +653,15 @@ export default function Register() {
           100% { opacity: 1; transform: translateY(0); }
         }
         .animate-slideDown { animation: slideDown 0.2s ease forwards; }
+
+        @keyframes otpShake {
+          0%,100%{ transform: translateX(0); }
+          20%    { transform: translateX(-8px); }
+          40%    { transform: translateX(8px); }
+          60%    { transform: translateX(-6px); }
+          80%    { transform: translateX(6px); }
+        }
+        .animate-otpShake { animation: otpShake 0.5s ease; }
       `}</style>
     </div>
   )

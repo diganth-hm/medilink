@@ -17,9 +17,7 @@ Required environment variables (set in Render / .env):
   TWILIO_TOKEN
   TWILIO_FROM     — E.164 format, e.g. +15005550006
 
-  FAST2SMS_API_KEY    — Fast2SMS API key (for Indian numbers)
-
-  OTP_EXPIRY_MINUTES  — default 5
+  OTP_EXPIRY_MINUTES  — default 10
 """
 
 import os
@@ -144,7 +142,7 @@ def send_email(to_email: str, subject: str, body: str) -> bool:
     Public API — send an email.
     Tries SMTP → SendGrid → dev fallback.
     """
-    expiry_min = int(os.getenv("OTP_EXPIRY_MINUTES", "5"))
+    expiry_min = int(os.getenv("OTP_EXPIRY_MINUTES", "10"))
 
     # Extract OTP from body if it's an OTP email for rich HTML
     otp_val = None
