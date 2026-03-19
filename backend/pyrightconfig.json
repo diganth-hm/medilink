@@ -1,0 +1,12 @@
+{
+  "venvPath": "C:\\medilink\\backend",
+  "venv": "medilink_venv",
+  "extraPaths": [
+    "C:\\medilink\\backend"
+  ],
+  "executionEnvironments": [
+    {
+      "root": "C:\\medilink\\backend"
+    }
+  ]
+}
