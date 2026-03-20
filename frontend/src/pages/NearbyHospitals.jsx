@@ -4,6 +4,7 @@ import { useUserLocation } from '../context/LocationContext'
 import { API_URL } from '../config'
 
 const GMAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY
+console.log('Maps key present:', !!GMAPS_KEY)
 
 // Haversine distance in km
 function haversine(lat1, lng1, lat2, lng2) {
