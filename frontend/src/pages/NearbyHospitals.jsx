@@ -1,240 +1,403 @@
-import { useState, useEffect, useRef } from 'react'
-import toast from 'react-hot-toast'
-import { useUserLocation } from '../context/LocationContext'
-import { API_URL } from '../config'
+import { useState, useEffect } from 'react'
+import { MapContainer, TileLayer, Marker, Popup, Circle } from 'react-leaflet'
+import 'leaflet/dist/leaflet.css'
+import L from 'leaflet'
 
-const GMAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY
-console.log('Maps key present:', !!GMAPS_KEY)
+delete L.Icon.Default.prototype._getIconUrl
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+})
 
-// Haversine distance in km
-function haversine(lat1, lng1, lat2, lng2) {
-  const R = 6371
-  const dLat = (lat2 - lat1) * Math.PI / 180
-  const dLng = (lng2 - lng1) * Math.PI / 180
-  const a = Math.sin(dLat / 2) ** 2 +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-    Math.sin(dLng / 2) ** 2
-  return (R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))).toFixed(1)
-}
+const hospitalIcon = new L.Icon({
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+})
 
-async function fetchWithGoogleMaps(lat, lng) {
-  // Nearby Search — hospital type, radius 10 km
-  const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=10000&type=hospital&key=${GMAPS_KEY}`
-  // Note: direct browser fetch to Google Maps is blocked by CORS on the places API.
-  // We proxy through the backend instead.
-  const backendUrl = `${API_URL}/emergency/hospitals-gmaps?lat=${lat}&lng=${lng}`
-  const res = await fetch(backendUrl)
-  if (!res.ok) throw new Error('Google Maps proxy failed')
-  return res.json()
-}
-
-async function fetchWithOverpass(lat, lng) {
-  const res = await fetch(`${API_URL}/emergency/hospitals?lat=${lat}&lng=${lng}&radius=10000`)
-  if (!res.ok) throw new Error('Overpass API failed')
-  const data = await res.json()
-  return data.hospitals || []
-}
-
-export default function NearbyHospitals() {
-  const { coords, address, locationLoading, locationError } = useUserLocation()
+const NearbyHospitals = () => {
   const [hospitals, setHospitals] = useState([])
+  const [userLocation, setUserLocation] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [dataSource, setDataSource] = useState(null)
-  const mapRef = useRef(null)
-  const fetchedRef = useRef(false)
+  const [error, setError] = useState(null)
+  const [radius, setRadius] = useState(3000)
 
   useEffect(() => {
-    if (locationLoading || fetchedRef.current) return
-    if (locationError || !coords) {
+    if (!navigator.geolocation) {
+      setError('Geolocation is not supported by your browser.')
       setLoading(false)
       return
     }
-    fetchedRef.current = true
-    const { lat, lng } = coords
 
-    const loadHospitals = async () => {
-      // Try Google Maps backend proxy first, then fall back to Overpass
-      if (GMAPS_KEY) {
-        try {
-          const data = await fetchWithGoogleMaps(lat, lng)
-          if (data.status === 'REQUEST_DENIED') {
-            toast.error(data.error_message || 'Google Maps request denied.')
-            throw new Error(data.error_message || 'REQUEST_DENIED')
-          }
-          const mapped = (data.results || []).map((p, i) => ({
-            id: p.place_id || i,
-            name: p.name,
-            phone: p.formatted_phone_number || 'N/A',
-            address: p.vicinity || 'Address not available',
-            emergency: p.opening_hours?.open_now ? '24/7 Available' : 'Hours Unknown',
-            dist: p.geometry?.location
-              ? `${haversine(lat, lng, p.geometry.location.lat, p.geometry.location.lng)} km`
-              : 'N/A',
-            maps_url: `https://www.google.com/maps/place/?q=place_id:${p.place_id}`,
-          }))
-          setHospitals(mapped)
-          setDataSource('Google Maps')
-          setLoading(false)
-          return
-        } catch (err) {
-          console.error('Google Maps error:', err)
-          // fall through to Overpass
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords
+        setUserLocation({ lat: latitude, lng: longitude })
+        fetchHospitals(latitude, longitude, radius)
+      },
+      (err) => {
+        setError('Location access denied. Please enable location permission and refresh.')
+        setLoading(false)
+      }
+    )
+  }, [])
+
+  const fetchHospitals = async (lat, lng, searchRadius) => {
+    setLoading(true)
+    setError(null)
+    try {
+      const query = `
+        [out:json][timeout:25];
+        (
+          node["amenity"="hospital"](around:${searchRadius},${lat},${lng});
+          node["amenity"="clinic"](around:${searchRadius},${lat},${lng});
+          node["amenity"="doctors"](around:${searchRadius},${lat},${lng});
+          way["amenity"="hospital"](around:${searchRadius},${lat},${lng});
+          way["amenity"="clinic"](around:${searchRadius},${lat},${lng});
+        );
+        out center;
+      `
+      const response = await fetch(
+        'https://overpass-api.de/api/interpreter',
+        {
+          method: 'POST',
+          body: query,
         }
-      }
+      )
+      const data = await response.json()
 
-      try {
-        const hosp = await fetchWithOverpass(lat, lng)
-        const mapped = hosp.map((h, i) => ({
-          ...h,
-          dist: h.lat && h.lng ? `${haversine(lat, lng, h.lat, h.lng)} km` : h.dist || 'N/A',
-          maps_url: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(h.name)}&query_place_id=`,
+      const results = data.elements
+        .filter(el => el.lat || el.center)
+        .map(el => ({
+          id: el.id,
+          name: el.tags?.name || 'Unnamed Hospital',
+          lat: el.lat || el.center?.lat,
+          lng: el.lon || el.center?.lon,
+          phone: el.tags?.phone || el.tags?.['contact:phone'] || null,
+          emergency: el.tags?.emergency || null,
+          address: [
+            el.tags?.['addr:street'],
+            el.tags?.['addr:city'],
+          ].filter(Boolean).join(', ') || 'Address not available',
+          type: el.tags?.amenity || 'hospital',
+          distance: getDistance(lat, lng, el.lat || el.center?.lat, el.lon || el.center?.lon)
         }))
-        setHospitals(mapped)
-        setDataSource('OpenStreetMap')
-        setLoading(false)
-      } catch (err) {
-        toast.error('Could not load nearby hospitals.')
-        setLoading(false)
-      }
+        .sort((a, b) => a.distance - b.distance)
+
+      setHospitals(results)
+      setLoading(false)
+    } catch (err) {
+      setError('Failed to fetch nearby hospitals. Please try again.')
+      setLoading(false)
     }
+  }
 
-    loadHospitals()
-  }, [coords, locationLoading, locationError])
+  const getDistance = (lat1, lng1, lat2, lng2) => {
+    const R = 6371000
+    const dLat = (lat2 - lat1) * Math.PI / 180
+    const dLng = (lng2 - lng1) * Math.PI / 180
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLng/2) * Math.sin(dLng/2)
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))
+    return Math.round(R * c)
+  }
 
-  // Embed a Google Map iframe when coords are available
-  const mapSrc = coords && GMAPS_KEY
-    ? `https://www.google.com/maps/embed/v1/search?q=hospitals+near+me&center=${coords.lat},${coords.lng}&zoom=13&key=${GMAPS_KEY}`
-    : coords
-      ? `https://www.openstreetmap.org/export/embed.html?bbox=${coords.lng - 0.05},${coords.lat - 0.05},${coords.lng + 0.05},${coords.lat + 0.05}&layer=mapnik&marker=${coords.lat},${coords.lng}`
-      : null
+  const formatDistance = (meters) => {
+    if (meters < 1000) return `${meters}m`
+    return `${(meters / 1000).toFixed(1)}km`
+  }
 
-  return (
-    <div className="min-h-screen pt-24 pb-12 px-4">
-      <div className="max-w-6xl mx-auto">
+  const handleRadiusChange = (newRadius) => {
+    setRadius(newRadius)
+    if (userLocation) {
+      fetchHospitals(userLocation.lat, userLocation.lng, newRadius)
+    }
+  }
 
-        {/* Header */}
-        <header className="flex flex-col md:flex-row justify-between items-end gap-4 mb-8">
-          <div>
-            <h1 className="text-4xl font-bold text-primary mb-3">Nearby Emergency Hospitals</h1>
-            <p className="text-secondary">Live results based on your GPS position.</p>
-          </div>
-          <div className="flex flex-col gap-2 items-end">
-            {coords ? (
-              <div className="flex items-center gap-3 px-4 py-2 bg-slate-800/50 rounded-xl border border-slate-700">
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                <span className="text-xs text-secondary font-medium tracking-wider uppercase">
-                  📍 {address || `${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)}`}
-                </span>
-              </div>
-            ) : locationLoading ? (
-              <div className="flex items-center gap-2 px-4 py-2 bg-slate-800/50 rounded-xl border border-slate-700">
-                <div className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse" />
-                <span className="text-xs text-secondary">Detecting location...</span>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2 px-4 py-2 bg-red-900/30 rounded-xl border border-red-800">
-                <span className="text-xs text-red-400">⚠️ Location unavailable</span>
-              </div>
-            )}
-            {dataSource && (
-              <span className="text-xs text-secondary">Powered by {dataSource}</span>
-            )}
-          </div>
-        </header>
-
-        {/* Map embed */}
-        {mapSrc && (
-          <div className="mb-8 rounded-2xl overflow-hidden border border-slate-700/50 shadow-xl h-64">
-            <iframe
-              ref={mapRef}
-              src={mapSrc}
-              width="100%"
-              height="100%"
-              style={{ border: 0 }}
-              allowFullScreen
-              loading="lazy"
-              title="Hospitals Map"
-            />
-          </div>
-        )}
-
-        {/* Loading skeleton */}
-        {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[1, 2, 3, 4, 5, 6].map(i => (
-              <div key={i} className="glass p-6 rounded-2xl animate-pulse h-64 bg-slate-800/50" />
-            ))}
-          </div>
-        ) : hospitals.length === 0 ? (
-          <div className="text-center py-20">
-            <div className="text-6xl mb-4">🏥</div>
-            <p className="text-secondary mb-2">No hospitals found nearby.</p>
-            <p className="text-secondary text-sm">Try enabling location access and refreshing.</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {hospitals.map((h) => (
-              <div key={h.id} className="glass group p-6 rounded-2xl border border-slate-700/50 hover:border-blue-500/30 transition-all flex flex-col">
-                <div className="flex justify-between items-start mb-4">
-                  <h3 className="text-xl font-bold text-primary group-hover:text-blue-400 transition-colors leading-tight pr-2">{h.name}</h3>
-                  <span className="text-xs font-bold text-blue-500 bg-blue-500/10 px-2 py-1 rounded flex-shrink-0">{h.dist}</span>
-                </div>
-
-                <div className="space-y-4 flex-1">
-                  <div className="flex gap-3 items-start text-secondary">
-                    <svg className="w-5 h-5 flex-shrink-0 text-secondary mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                    <p className="text-sm leading-snug">{h.address}</p>
-                  </div>
-
-                  {h.phone && h.phone !== 'N/A' && (
-                    <div className="flex gap-3 items-center text-secondary">
-                      <svg className="w-5 h-5 flex-shrink-0 text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                      </svg>
-                      <a href={`tel:${h.phone}`} className="text-sm font-medium text-primary hover:text-blue-400 transition-colors">{h.phone}</a>
-                    </div>
-                  )}
-
-                  <div className="flex gap-3 items-center">
-                    <div className="px-3 py-1 bg-red-500/10 text-red-400 text-xs font-bold rounded-full border border-red-500/20 flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 bg-red-500 rounded-full" />
-                      {h.emergency}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-6 grid grid-cols-2 gap-2">
-                  {h.phone && h.phone !== 'N/A' && (
-                    <a
-                      href={`tel:${h.phone}`}
-                      className="btn-ghost border border-slate-700 py-2 px-3 rounded-xl hover:bg-slate-800 flex items-center justify-center gap-1 text-sm text-secondary hover:text-primary transition-all"
-                    >
-                      📞 Call
-                    </a>
-                  )}
-                  {h.maps_url && (
-                    <a
-                      href={h.maps_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="btn-ghost border border-slate-700 py-2 px-3 rounded-xl hover:bg-slate-800 flex items-center justify-center gap-1 text-sm text-secondary hover:text-primary transition-all"
-                    >
-                      🗺️ Map
-                    </a>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        <div className="mt-12 text-center text-secondary text-xs">
-          In case of extreme emergency, call <strong className="text-red-400">108</strong> immediately.
+  if (error) {
+    return (
+      <div style={{
+        minHeight: '60vh',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: '16px',
+        padding: '40px',
+        textAlign: 'center'
+      }}>
+        <div style={{ fontSize: '48px' }}>📍</div>
+        <h2 style={{ color: 'var(--text-primary)', fontSize: '20px', fontWeight: 700 }}>
+          Location Required
+        </h2>
+        <p style={{ color: 'var(--text-secondary)', maxWidth: '400px' }}>
+          {error}
+        </p>
+        <div style={{
+          background: 'var(--bg-card)',
+          border: '1px solid var(--border)',
+          borderRadius: '12px',
+          padding: '20px',
+          marginTop: '16px',
+          width: '100%',
+          maxWidth: '400px'
+        }}>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '13px', marginBottom: '12px' }}>
+            Emergency Numbers
+          </p>
+          {[
+            { name: 'Ambulance', number: '108' },
+            { name: 'Police', number: '100' },
+            { name: 'Fire', number: '101' },
+            { name: 'Disaster Management', number: '1078' },
+          ].map(item => (
+            <div key={item.name} style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              padding: '10px 0',
+              borderBottom: '1px solid var(--border)'
+            }}>
+              <span style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{item.name}</span>
+              <a href={`tel:${item.number}`} style={{
+                color: '#E5341A',
+                fontWeight: 700,
+                fontSize: '18px',
+                textDecoration: 'none'
+              }}>{item.number}</a>
+            </div>
+          ))}
         </div>
       </div>
+    )
+  }
+
+  return (
+    <div style={{ padding: '24px', maxWidth: '1200px', margin: '0 auto' }}>
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: '20px',
+        flexWrap: 'wrap',
+        gap: '12px'
+      }}>
+        <div>
+          <h1 style={{ color: 'var(--text-primary)', fontSize: '22px', fontWeight: 700, marginBottom: '4px' }}>
+            Nearby Hospitals
+          </h1>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>
+            {loading ? 'Searching...' : `${hospitals.length} facilities found`}
+          </p>
+        </div>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          {[1000, 3000, 5000, 10000].map(r => (
+            <button
+              key={r}
+              onClick={() => handleRadiusChange(r)}
+              style={{
+                padding: '6px 14px',
+                borderRadius: '999px',
+                border: '1px solid',
+                borderColor: radius === r ? '#E5341A' : 'var(--border)',
+                background: radius === r ? '#E5341A' : 'transparent',
+                color: radius === r ? '#ffffff' : 'var(--text-secondary)',
+                fontSize: '13px',
+                fontWeight: 500,
+                cursor: 'pointer',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              {r >= 1000 ? `${r/1000}km` : `${r}m`}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {loading ? (
+        <div style={{
+          height: '400px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: 'var(--text-secondary)',
+          background: 'var(--bg-card)',
+          borderRadius: '16px',
+          border: '1px solid var(--border)'
+        }}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{
+              width: '40px',
+              height: '40px',
+              border: '3px solid var(--border)',
+              borderTopColor: '#E5341A',
+              borderRadius: '50%',
+              animation: 'spin 1s linear infinite',
+              margin: '0 auto 16px'
+            }} />
+            <p>Finding nearby hospitals...</p>
+          </div>
+        </div>
+      ) : (
+        <div className="hospitals-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+          <div className="hospitals-map" style={{
+            height: '500px',
+            borderRadius: '16px',
+            overflow: 'hidden',
+            border: '1px solid var(--border)'
+          }}>
+            {userLocation && (
+              <MapContainer
+                center={[userLocation.lat, userLocation.lng]}
+                zoom={14}
+                style={{ height: '100%', width: '100%' }}
+              >
+                <TileLayer
+                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                />
+                <Marker position={[userLocation.lat, userLocation.lng]}>
+                  <Popup>You are here</Popup>
+                </Marker>
+                <Circle
+                  center={[userLocation.lat, userLocation.lng]}
+                  radius={radius}
+                  pathOptions={{ color: '#E5341A', fillColor: '#E5341A', fillOpacity: 0.05 }}
+                />
+                {hospitals.map(hospital => (
+                  <Marker
+                    key={hospital.id}
+                    position={[hospital.lat, hospital.lng]}
+                    icon={hospitalIcon}
+                  >
+                    <Popup>
+                      <strong>{hospital.name}</strong><br />
+                      {hospital.address}<br />
+                      {hospital.phone && <a href={`tel:${hospital.phone}`}>{hospital.phone}</a>}
+                    </Popup>
+                  </Marker>
+                ))}
+              </MapContainer>
+            )}
+          </div>
+
+          <div style={{
+            height: '500px',
+            overflowY: 'auto',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px'
+          }}>
+            {hospitals.length === 0 ? (
+              <div style={{
+                textAlign: 'center',
+                color: 'var(--text-secondary)',
+                padding: '40px'
+              }}>
+                No hospitals found in this area. Try increasing the search radius.
+              </div>
+            ) : (
+              hospitals.map(hospital => (
+                <div
+                  key={hospital.id}
+                  style={{
+                    background: 'var(--bg-card)',
+                    border: '1px solid var(--border)',
+                    borderRadius: '12px',
+                    padding: '16px',
+                    cursor: 'pointer',
+                    transition: 'border-color 0.2s ease'
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.borderColor = '#E5341A'}
+                  onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                    <h3 style={{ color: 'var(--text-primary)', fontSize: '15px', fontWeight: 600, margin: 0, flex: 1 }}>
+                      {hospital.name}
+                    </h3>
+                    <span style={{
+                      background: 'rgba(229,52,26,0.1)',
+                      color: '#E5341A',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      padding: '2px 10px',
+                      borderRadius: '999px',
+                      marginLeft: '8px',
+                      whiteSpace: 'nowrap'
+                    }}>
+                      {formatDistance(hospital.distance)}
+                    </span>
+                  </div>
+                  <p style={{ color: 'var(--text-secondary)', fontSize: '13px', margin: '0 0 8px' }}>
+                    {hospital.address}
+                  </p>
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    {hospital.emergency && (
+                      <span style={{
+                        background: 'rgba(229,52,26,0.1)',
+                        color: '#E5341A',
+                        fontSize: '11px',
+                        padding: '2px 8px',
+                        borderRadius: '4px',
+                        fontWeight: 600
+                      }}>
+                        EMERGENCY
+                      </span>
+                    )}
+                    <span style={{
+                      background: 'var(--bg-secondary)',
+                      color: 'var(--text-secondary)',
+                      fontSize: '11px',
+                      padding: '2px 8px',
+                      borderRadius: '4px',
+                      textTransform: 'capitalize'
+                    }}>
+                      {hospital.type}
+                    </span>
+                  </div>
+                  {hospital.phone && (
+                    <a
+                      href={`tel:${hospital.phone}`}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        marginTop: '10px',
+                        color: '#E5341A',
+                        fontSize: '13px',
+                        fontWeight: 600,
+                        textDecoration: 'none'
+                      }}
+                    >
+                      📞 {hospital.phone}
+                    </a>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+        @media (max-width: 768px) {
+          .hospitals-grid {
+            grid-template-columns: 1fr !important;
+          }
+          .hospitals-map {
+            height: 300px !important;
+          }
+        }
+      `}</style>
     </div>
   )
 }
+
+export default NearbyHospitals
