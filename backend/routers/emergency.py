@@ -79,7 +79,11 @@ def get_hospitals_google(lat: float, lng: float, radius: int = 10000):
                 "rating": place.get("rating"),
                 "user_ratings_total": place.get("user_ratings_total"),
             })
-        return {"results": results, "status": data.get("status")}
+        return {
+            "results": results, 
+            "status": data.get("status"),
+            "error_message": data.get("error_message")
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Google Maps error: {str(e)}")
 

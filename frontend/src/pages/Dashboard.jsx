@@ -249,7 +249,7 @@ export default function Dashboard() {
             icon: '🔬',
             title: 'Biometric Enrollment',
             desc: 'Register your fingerprint for secure access',
-            link: '/biometric-enroll',
+            link: '/biometric-portal',
             btn: 'Enroll Now',
             gradient: 'from-cyan-600 to-teal-700',
           },

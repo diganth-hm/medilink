@@ -57,6 +57,10 @@ export default function NearbyHospitals() {
       if (GMAPS_KEY) {
         try {
           const data = await fetchWithGoogleMaps(lat, lng)
+          if (data.status === 'REQUEST_DENIED') {
+            toast.error(data.error_message || 'Google Maps request denied.')
+            throw new Error(data.error_message || 'REQUEST_DENIED')
+          }
           const mapped = (data.results || []).map((p, i) => ({
             id: p.place_id || i,
             name: p.name,
@@ -72,7 +76,8 @@ export default function NearbyHospitals() {
           setDataSource('Google Maps')
           setLoading(false)
           return
-        } catch {
+        } catch (err) {
+          console.error('Google Maps error:', err)
           // fall through to Overpass
         }
       }
