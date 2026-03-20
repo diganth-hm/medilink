@@ -150,17 +150,29 @@ def send_otp_sms(to_phone: str, otp: str) -> bool:
                 return False
 
             client = Client(str(sid), str(token))
-            msg = client.messages.create(
-                body=(
-                    f"MediLink Emergency Medical Records\n\n"
-                    f"Your verification code is: {otp}\n\n"
-                    f"Valid for 30 minutes. Do not share.\n\n- MediLink Team"
-                ),
-                from_=str(from_num),
-                to=to_phone,
-            )
-            logger.info(f"[SMS] Twilio success: {msg.sid}")
-            return True
+            try:
+                msg = client.messages.create(
+                    body=(
+                        f"MediLink Emergency Medical Records\n\n"
+                        f"Your verification code is: {otp}\n\n"
+                        f"Valid for 30 minutes. Do not share.\n\n- MediLink Team"
+                    ),
+                    from_=str(from_num),
+                    to=to_phone,
+                )
+                logger.info(f"[SMS] Twilio success: {msg.sid}")
+                return True
+            except Exception as twilio_err:
+                err_msg = str(twilio_err)
+                if "unverified" in err_msg.lower() or "21608" in err_msg:
+                    logger.warning(
+                        f"[SMS] Twilio trial account cannot send to unverified number {to_phone}. "
+                        "Verify the number at twilio.com/user/account/phone-numbers/verified "
+                        "or upgrade your Twilio account. Skipping SMS."
+                    )
+                else:
+                    logger.error(f"[SMS] Twilio error for {to_phone}: {twilio_err}")
+                return False
         else:
             logger.warning("[SMS] Neither Fast2SMS nor Twilio available")
             return False

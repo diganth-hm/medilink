@@ -1,5 +1,9 @@
 import { createContext, useContext, useState, useEffect } from 'react'
 import axios from 'axios'
+import { API_URL } from '../config'
+
+// Set base URL once so all relative-path axios calls hit the correct backend
+axios.defaults.baseURL = API_URL
 
 const AuthContext = createContext(null)
 
