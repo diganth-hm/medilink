@@ -30,6 +30,52 @@ import PublicFundraising from './pages/PublicFundraising'
 import { useEffect } from 'react'
 import { API_URL } from './config'
 
+const PlaceholderPage = ({ title }) => (
+  <div style={{
+    minHeight: '60vh',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    color: 'var(--text-primary)',
+    gap: '16px'
+  }}>
+    <h1 style={{ fontSize: '24px', fontWeight: 700 }}>{title}</h1>
+    <p style={{ color: 'var(--text-secondary)' }}>This section is coming soon.</p>
+  </div>
+)
+
+const NotFound = () => (
+  <div style={{
+    minHeight: '80vh',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '16px',
+    color: 'var(--text-primary)',
+    textAlign: 'center',
+    padding: '40px'
+  }}>
+    <div style={{ fontSize: '72px', fontWeight: 700, color: '#E5341A' }}>404</div>
+    <h1 style={{ fontSize: '24px', fontWeight: 700 }}>Page Not Found</h1>
+    <p style={{ color: 'var(--text-secondary)', maxWidth: '400px' }}>
+      The page you are looking for does not exist or has been moved.
+    </p>
+    <a href="/" style={{
+      background: '#E5341A',
+      color: '#ffffff',
+      padding: '12px 32px',
+      borderRadius: '8px',
+      textDecoration: 'none',
+      fontWeight: 600,
+      marginTop: '8px'
+    }}>
+      Go Home
+    </a>
+  </div>
+)
+
 export default function App() {
   useEffect(() => {
     // Keep Render server from sleeping
@@ -67,36 +113,34 @@ export default function App() {
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
-          <Route path="/scan" element={<ScanQR />} />
+          <Route path="/scan-qr" element={<ScanQR />} />
           <Route path="/emergency/:qr_token" element={<EmergencyView />} />
           <Route path="/emergency/:token" element={<EmergencyPage />} />
+          <Route path="/fundraising" element={<PublicFundraising />} />
 
           {/* Protected routes */}
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-          <Route path="/profile" element={<ProtectedRoute><MedicalProfile /></ProtectedRoute>} />
-          <Route path="/qr-code" element={<ProtectedRoute><QRCodePage /></ProtectedRoute>} />
-          <Route path="/records" element={<ProtectedRoute><MedicalRecords /></ProtectedRoute>} />
-          <Route path="/chatbot" element={<ProtectedRoute><Chatbot /></ProtectedRoute>} />
-          <Route path="/fundraising" element={<ProtectedRoute><Fundraising /></ProtectedRoute>} />
-          <Route path="/nearby-hospitals" element={<ProtectedRoute><NearbyHospitals /></ProtectedRoute>} />
-          <Route path="/concessions" element={<ProtectedRoute><HospitalConcessions /></ProtectedRoute>} />
-          <Route path="/medical-id" element={<ProtectedRoute><MedicalIDCard /></ProtectedRoute>} />
-          <Route path="/biometric-portal" element={<ProtectedRoute><BiometricPortal /></ProtectedRoute>} />
-          <Route path="/enroll-biometric" element={<BiometricEnroll />} />
+          <Route path="/dashboard/profile" element={<ProtectedRoute><MedicalProfile /></ProtectedRoute>} />
+          <Route path="/dashboard/qr-code" element={<ProtectedRoute><QRCodePage /></ProtectedRoute>} />
+          <Route path="/dashboard/medical-card" element={<ProtectedRoute><MedicalIDCard /></ProtectedRoute>} />
+          <Route path="/dashboard/emergency-contacts" element={<ProtectedRoute><PlaceholderPage title="Emergency Contacts" /></ProtectedRoute>} />
+          <Route path="/dashboard/health-records" element={<ProtectedRoute><MedicalRecords /></ProtectedRoute>} />
+          <Route path="/dashboard/appointments" element={<ProtectedRoute><PlaceholderPage title="Appointments" /></ProtectedRoute>} />
+          <Route path="/dashboard/prescriptions" element={<ProtectedRoute><PlaceholderPage title="Prescriptions" /></ProtectedRoute>} />
+          <Route path="/dashboard/settings" element={<ProtectedRoute><PlaceholderPage title="Settings" /></ProtectedRoute>} />
+          
+          {/* Other nested protected routes */}
+          <Route path="/dashboard/chatbot" element={<ProtectedRoute><Chatbot /></ProtectedRoute>} />
+          <Route path="/dashboard/fundraising-apply" element={<ProtectedRoute><Fundraising /></ProtectedRoute>} />
+          <Route path="/dashboard/nearby-hospitals" element={<ProtectedRoute><NearbyHospitals /></ProtectedRoute>} />
+          <Route path="/dashboard/concessions" element={<ProtectedRoute><HospitalConcessions /></ProtectedRoute>} />
+          <Route path="/dashboard/biometric-portal" element={<ProtectedRoute><BiometricPortal /></ProtectedRoute>} />
+          
+          <Route path="/enroll-biometric" element={<ProtectedRoute><BiometricEnroll /></ProtectedRoute>} />
           <Route path="/doctor-verification" element={<ProtectedRoute><DoctorVerification /></ProtectedRoute>} />
-          <Route path="/explore-fundraising" element={<PublicFundraising />} />
 
           {/* 404 */}
-          <Route path="*" element={
-            <div className="min-h-screen flex items-center justify-center text-center px-4 pt-16">
-              <div>
-                <div className="text-8xl mb-6">🔍</div>
-                <h1 className="text-4xl font-bold text-primary mb-3">Page Not Found</h1>
-                <p className="text-secondary mb-6">The page you're looking for doesn't exist.</p>
-                <a href="/" className="btn-primary px-8 py-3 inline-block">Go Home</a>
-              </div>
-            </div>
-          } />
+          <Route path="*" element={<NotFound />} />
         </Routes>
         </div>
         <Footer />
