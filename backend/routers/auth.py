@@ -3,10 +3,11 @@ from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from sqlalchemy.orm import Session
 from database import get_db
 from models import User, OTPToken
-from schemas import UserRegister, UserLogin, Token, UserOut, OTPRequest, OTPVerify
+from schemas import UserRegister, UserLogin, Token, UserOut, OTPRequest, OTPVerify, SendOTPRequest
 from auth import hash_password, verify_password, create_access_token, get_current_user
-from services.otp_service import create_otp, verify_otp, get_otp_remaining_seconds
+from services.otp_service import generate_otp, hash_otp, verify_otp, get_otp_remaining_seconds
 from services.notification_service import send_email, send_sms, send_otp_email
+from datetime import datetime, timedelta
 from pydantic import BaseModel, EmailStr
 from typing import Optional
 import os
@@ -80,51 +81,61 @@ def login(user_data: UserLogin, db: Session = Depends(get_db)):
 
 
 @router.post("/send-otp")
-async def send_otp_route(request: OTPRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+async def send_otp_route(request: SendOTPRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     """
-    Generate a 6-digit OTP for the given email or mobile number.
-    The OTP is bcrypt-hashed in storage and delivered via SMTP/SMS in the background.
+    Generate a 6-digit OTP for the given email AND/OR mobile number.
+    Uses BackgroundTasks for instant response.
     """
-    print(f"[DEBUG] send-otp called")
-    print(f"[DEBUG] SMTP_USER present: {bool(os.getenv('SMTP_USER'))}")
-    print(f"[DEBUG] SMTP_PASS present: {bool(os.getenv('SMTP_PASS'))}")
-    
     print(f"[DEBUG] send-otp called with data: {request}")
-    identifier = request.identifier.strip()
+    
+    identifier = request.email or request.phone
+    if not identifier:
+        raise HTTPException(status_code=400, detail="Must provide email or phone")
+    
+    identifier = str(identifier).strip().lower()
 
+    # Generate ONE code
+    otp_code = generate_otp()
+    
     # Resolve user context if available (for the email template name)
     user = db.query(User).filter(
         (User.email == identifier) | (User.mobile_number == identifier)
     ).first()
-    user_name = user.name if user else "User"
+    user_name = request.name or (user.name if user else "User")
 
-    channel = request.channel.strip().lower()
-    otp_code = create_otp(db, identifier, channel)
+    # Cleanup old ones
+    db.query(OTPToken).filter(OTPToken.identifier == identifier).delete()
+    db.commit()
 
-    is_email = (channel == "email")
+    # Save to DB
     expiry_min = OTP_EXPIRY_MINUTES
-    
-    otp_message = (
-        f"[MediLink] Your verification OTP is: {otp_code}\n"
-        f"This OTP expires in {expiry_min} minutes. Do not share."
+    new_otp = OTPToken(
+        identifier=identifier,
+        otp_code=hash_otp(otp_code),
+        channel="both" if (request.email and request.phone) else ("email" if request.email else "sms"),
+        expires_at=datetime.utcnow() + timedelta(minutes=expiry_min),
+        used=False,
+        attempts=0
     )
+    db.add(new_otp)
+    db.commit()
 
-    if is_email:
-        # Use the new async send_otp_email in background
-        background_tasks.add_task(send_otp_email, identifier, otp_code, user_name)
-        logger.info("[AUTH] OTP generated; queued background email task for %s", identifier)
-    else:
-        # SMS sending (currently synchronous call, but added to background task)
-        background_tasks.add_task(send_sms, identifier, otp_message)
-        logger.info("[AUTH] OTP generated; queued background SMS task for %s", identifier)
+    # Queue background tasks
+    if request.email:
+        background_tasks.add_task(send_otp_email, request.email, otp_code, user_name)
+        logger.info("[AUTH] Queued email OTP task for %s", request.email)
+    
+    if request.phone:
+        otp_message = f"[MediLink] Your verification OTP is: {otp_code}\nThis OTP expires in {expiry_min} minutes. Do not share."
+        background_tasks.add_task(send_sms, request.phone, otp_message)
+        logger.info("[AUTH] Queued SMS OTP task for %s", request.phone)
 
-    # Dev/Local output preserved
     if os.getenv("ENVIRONMENT") != "production":
         print(f"\n[DEV MODE] DEV OTP for {identifier}: {otp_code}\n")
 
     return {
         "success": True,
-        "message": "OTP sent successfully.",
+        "message": "OTP is being sent.",
         "expires_in_seconds": expiry_min * 60,
     }
 
@@ -136,32 +147,39 @@ async def login_send_otp_route(request: OTPLoginRequest, background_tasks: Backg
     identifier = request.email if request.email else request.phone
     if not identifier:
         raise HTTPException(status_code=400, detail="Must provide email or phone")
+    
+    identifier = str(identifier).strip().lower()
 
     user = db.query(User).filter(
         (User.email == identifier) | (User.mobile_number == identifier)
     ).first()
     
     if not user:
-        # For security, you might want to obscure whether an account exists, but for UX we just throw an error.
         raise HTTPException(status_code=404, detail="Account not found. Please register first.")
 
-    channel = "email" if request.email else "sms"
-    otp_code = create_otp(db, identifier, channel)
-
-    is_email = (channel == "email")
-    expiry_min = OTP_EXPIRY_MINUTES
+    otp_code = generate_otp()
     
-    otp_message = (
-        f"[MediLink] Your verification OTP is: {otp_code}\n"
-        f"This OTP expires in {expiry_min} minutes. Do not share."
-    )
+    # Cleanup old ones
+    db.query(OTPToken).filter(OTPToken.identifier == identifier).delete()
+    db.commit()
 
-    if is_email:
-        background_tasks.add_task(send_otp_email, identifier, otp_code, user.name)
-        logger.info("[AUTH] OTP generated; queued background email task for %s", identifier)
+    expiry_min = OTP_EXPIRY_MINUTES
+    new_otp = OTPToken(
+        identifier=identifier,
+        otp_code=hash_otp(otp_code),
+        channel="email" if request.email else "sms",
+        expires_at=datetime.utcnow() + timedelta(minutes=expiry_min),
+        used=False,
+        attempts=0
+    )
+    db.add(new_otp)
+    db.commit()
+
+    if request.email:
+        background_tasks.add_task(send_otp_email, request.email, otp_code, user.name)
     else:
-        background_tasks.add_task(send_sms, identifier, otp_message)
-        logger.info("[AUTH] OTP generated; queued background SMS task for %s", identifier)
+        otp_message = f"[MediLink] Your verification OTP is: {otp_code}\nThis OTP expires in {expiry_min} minutes. Do not share."
+        background_tasks.add_task(send_sms, request.phone, otp_message)
 
     if os.getenv("ENVIRONMENT") != "production":
         print(f"\n[DEV MODE] DEV OTP for {identifier}: {otp_code}\n")
@@ -178,7 +196,11 @@ def verify_otp_route(request: OTPVerify, db: Session = Depends(get_db)):
     """
     Verify the OTP and return a JWT access token on success.
     """
-    identifier = request.identifier.strip()
+    identifier = request.email or request.phone or request.identifier
+    if not identifier:
+        raise HTTPException(status_code=400, detail="Must provide identifier (email or phone)")
+    
+    identifier = str(identifier).strip().lower()
     otp_code = request.otp_code.strip()
 
     logger.info("[AUTH] OTP verification attempt for %s", identifier)

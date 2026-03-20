@@ -25,7 +25,7 @@ MAX_ATTEMPTS = 5
 _pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
-def _hash_otp(otp: str) -> str:
+def hash_otp(otp: str) -> str:
     return _pwd_ctx.hash(otp)
 
 
@@ -55,7 +55,7 @@ def create_otp(db: Session, identifier: str, channel: str) -> str:
 
     db_otp = OTPToken(
         identifier=identifier,
-        otp_code=_hash_otp(otp_code),   # store hash, not plain text
+        otp_code=hash_otp(otp_code),   # store hash, not plain text
         channel=channel,
         expires_at=expires_at,
         used=False,

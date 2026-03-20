@@ -22,8 +22,16 @@ class OTPRequest(BaseModel):
     channel: str     # email or sms
 
 
+class SendOTPRequest(BaseModel):
+    name: Optional[str] = None
+    email: Optional[EmailStr] = None
+    phone: Optional[str] = None
+
+
 class OTPVerify(BaseModel):
-    identifier: str
+    email: Optional[EmailStr] = None
+    phone: Optional[str] = None
+    identifier: Optional[str] = None # Fallback for old callers
     otp_code: str
 
 

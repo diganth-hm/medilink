@@ -33,6 +33,7 @@ export default function Login() {
   const [countdown, setCountdown] = useState(60)
   const [isOtpSuccess, setIsOtpSuccess] = useState(false)
   const [isOtpFailed, setIsOtpFailed] = useState(false)
+  const [otpArriving, setOtpArriving] = useState(false)
 
   const inputRefs = useRef([null, null, null, null, null, null])
   const maskTimers = useRef([null, null, null, null, null, null])
@@ -91,11 +92,21 @@ export default function Login() {
   }, [isOtpFailed])
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
+    if (e) e.preventDefault()
     if (loginMethod === 'email' && !emailValue.trim()) return toast.error('Please enter your email')
     if (loginMethod === 'phone' && !phoneNumber.trim()) return toast.error('Please enter your phone number')
 
+    // Optimistic Transition (ISSUE 1)
+    setStep('otp')
+    setOtpArriving(true)
+    setCountdown(60)
+    setBoxValues(['', '', '', '', '', ''])
+    setBoxMasked([false, false, false, false, false, false])
     setLoading(true)
+
+    // Clear the arriving message after 10 seconds
+    const arriverTimer = setTimeout(() => setOtpArriving(false), 10000)
+
     try {
       const loginData = {}
       if (loginMethod === 'email') {
@@ -104,22 +115,23 @@ export default function Login() {
         loginData.phone = countryCode + phoneNumber
       }
 
-      // Feature 2 requires backend to handle `/auth/login/send-otp`. We send exactly what the user entered.
-      // But just in case VITE_API_URL isn't set, we fallback to API_URL (from config).
       const baseUrl = import.meta.env.VITE_API_URL || API_URL
       const response = await axios.post(
         `${baseUrl}/auth/login/send-otp`,
         loginData
       )
 
-      setStep('otp')
-      setCountdown(60)
-      setBoxValues(['', '', '', '', '', ''])
-      setBoxMasked([false, false, false, false, false, false])
+      if (response.status === 200 || response.data?.success) {
+        setLoading(false)
+      } else {
+        throw new Error('Failed to send OTP')
+      }
     } catch (err) {
       console.error(err)
+      setStep('form')
+      setOtpArriving(false)
+      clearTimeout(arriverTimer)
       toast.error(err.response?.data?.detail || err.message || 'Failed to send OTP')
-    } finally {
       setLoading(false)
     }
   }
@@ -221,9 +233,11 @@ export default function Login() {
     try {
       const identifier = loginMethod === 'email' ? emailValue.trim().toLowerCase() : countryCode + phoneNumber
       const baseUrl = import.meta.env.VITE_API_URL || API_URL
-      // The instruction asks to use /auth/login/send-otp above, so verification might just be the existing /auth/verify-otp
-      // but let's send exactly what we did before.
-      const res = await axios.post(`${baseUrl}/auth/verify-otp`, { identifier: identifier, otp_code: otpCode })
+      
+      const verifyPayload = loginMethod === 'email' ? { email: identifier } : { phone: identifier }
+      verifyPayload.otp_code = otpCode
+
+      const res = await axios.post(`${baseUrl}/auth/verify-otp`, verifyPayload)
 
       setIsOtpSuccess(true)
       setTimeout(() => {
@@ -257,6 +271,8 @@ export default function Login() {
       const baseUrl = import.meta.env.VITE_API_URL || API_URL
       await axios.post(`${baseUrl}/auth/login/send-otp`, loginData)
       toast.success('OTP resent successfully')
+      setOtpArriving(true)
+      setTimeout(() => setOtpArriving(false), 10000)
       setCountdown(60)
     } catch (err) {
       toast.error('Failed to resend OTP')
@@ -418,9 +434,22 @@ export default function Login() {
         <div className={`transition-all duration-500 transform absolute top-0 left-0 right-0 ${step === 'otp' ? 'translate-y-0 opacity-100 scale-100 pointer-events-auto' : 'translate-y-32 opacity-0 scale-95 pointer-events-none'}`}>
           <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-8 shadow-2xl text-center">
              <h2 className="text-[20px] font-bold text-[var(--text-primary)] mb-2">Enter Verification Code</h2>
-             <p className="text-[13px] text-[var(--text-secondary)] mb-6">
-               We sent a code to {loginMethod === 'email' ? emailValue : `${countryCode} ${phoneNumber.slice(-4)}`}
-             </p>
+              <p className="text-[13px] text-[var(--text-secondary)] mb-4">
+                We sent a code to {loginMethod === 'email' ? emailValue : `${countryCode} ${phoneNumber.slice(-4)}`}
+              </p>
+
+              {otpArriving && (
+                <div className="flex items-center justify-center gap-2 mb-6 animate-pulse">
+                  <div className="flex gap-1">
+                    <div className="w-1 h-1 bg-red-500 rounded-full animate-bounce" style={{ animationDelay: '0s' }} />
+                    <div className="w-1 h-1 bg-red-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
+                    <div className="w-1 h-1 bg-red-500 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }} />
+                  </div>
+                  <span className="text-[13px] text-[var(--text-secondary)]">
+                    OTP is on its way — check your inbox in a few seconds
+                  </span>
+                </div>
+              )}
 
              {/* OTP Boxes (Secure overlay architecture) */}
              <div

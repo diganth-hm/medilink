@@ -146,7 +146,7 @@ export default function Register() {
 
   // ---- FORM HANDLER ----
   const handleContinue = async (e) => {
-    e.preventDefault()
+    if (e) e.preventDefault()
     
     // Validations
     if (!email.trim() && !phone.trim()) {
@@ -159,41 +159,41 @@ export default function Register() {
       return
     }
 
+    // Optimistic Transition (ISSUE 1)
+    setStep('otp')
+    setOtpArriving(true)
+    setCountdown(60)
+    setBoxValues(['', '', '', '', '', ''])
+    setBoxMasked([false, false, false, false, false, false])
     setLoading(true)
+
+    // Clear the arriving message after 10 seconds
+    const arriverTimer = setTimeout(() => setOtpArriving(false), 10000)
+
     try {
-      // Create user dummy request or send OTP directly
-      // Based on specifications, we send OTPs to whichever exists
-      
-      const sendPromises = []
-      
-      if (email.trim()) {
-        sendPromises.push(axios.post(`${API_URL}/auth/send-otp`, { identifier: email.trim(), channel: 'email' }))
-      }
-      
-      if (phone.trim()) {
-         sendPromises.push(axios.post(`${API_URL}/auth/send-otp`, { identifier: fullPhone, channel: 'sms' }))
+      // Send ONE request with both identifiers (ISSUE 2)
+      const payload = {
+        name: name.trim(),
+        email: email.trim() || null,
+        phone: fullPhone || null
       }
 
-      const responses = await Promise.all(sendPromises)
+      const response = await axios.post(`${API_URL}/auth/send-otp`, payload)
       
-      // If any request returned status 200, transition immediately
-      if (responses.some(r => r.status === 200 || r.data?.success)) {
-        setStep('otp')
-        setOtpArriving(true)
-        setCountdown(60)
-        setBoxValues(['', '', '', '', '', ''])
-        setBoxMasked([false, false, false, false, false, false])
-
-        // Clear the arriving message after 10 seconds
-        setTimeout(() => setOtpArriving(false), 10000)
+      if (response.status === 200 || response.data?.success) {
+        // Success - stay on OTP screen
+        setLoading(false)
       } else {
         throw new Error('Failed to send OTP')
       }
 
     } catch (err) {
       console.error(err)
+      // Transition back on failure
+      setStep('form')
+      setOtpArriving(false)
+      clearTimeout(arriverTimer)
       toast.error(err.response?.data?.detail || err.message || 'Failed to send OTP. Please try again.')
-    } finally {
       setLoading(false)
     }
   }
@@ -294,10 +294,12 @@ export default function Register() {
     setLoading(true)
 
     try {
-      const primaryIdentifier = email.trim() || fullPhone
-
-      // 1. Verify OTP
-      await axios.post(`${API_URL}/auth/verify-otp`, { identifier: primaryIdentifier, otp_code: otpCode })
+      // 1. Verify OTP using unified identifiers
+      await axios.post(`${API_URL}/auth/verify-otp`, { 
+        email: email.trim() || null, 
+        phone: fullPhone || null,
+        otp_code: otpCode 
+      })
 
       // 2. Complete Registration
       const selectedRole = ROLES[currentRoleIndex].value
@@ -336,12 +338,16 @@ export default function Register() {
   const handleResend = async () => {
     setLoading(true)
     try {
-      const sendPromises = []
-      if (email.trim()) sendPromises.push(axios.post(`${API_URL}/auth/send-otp`, { identifier: email.trim(), channel: 'email' }))
-      if (phone.trim()) sendPromises.push(axios.post(`${API_URL}/auth/send-otp`, { identifier: fullPhone, channel: 'sms' }))
-      await Promise.all(sendPromises)
+      const payload = {
+        name: name.trim(),
+        email: email.trim() || null,
+        phone: fullPhone || null
+      }
+      await axios.post(`${API_URL}/auth/send-otp`, payload)
       
       toast.success('OTP resent successfully')
+      setOtpArriving(true)
+      setTimeout(() => setOtpArriving(false), 10000)
       setCountdown(60)
     } catch (err) {
       toast.error('Failed to resend OTP')
