@@ -144,26 +144,27 @@ def _build_otp_email(otp: str, expiry_minutes: int = 5):
     return subject, html, plain
 
 
-async def send_otp_email(to_email: str, otp: str, name: str):
+def send_otp_email(to_email: str, otp: str, name: str):
     """Asynchronous OTP email delivery with rich HTML template."""
     try:
-        smtp_user = os.getenv("SMTP_USER")
-        smtp_pass = os.getenv("SMTP_PASS")
+        smtp_user = os.getenv("SMTP_USER", "")
+        smtp_pass = os.getenv("SMTP_PASS", "")
         smtp_host = os.getenv("SMTP_HOST", "smtp.gmail.com")
+        smtp_port_raw = os.getenv("SMTP_PORT", "587")
         try:
-            smtp_port = int(os.getenv("SMTP_PORT", "587"))
+            smtp_port = int(smtp_port_raw)
         except (TypeError, ValueError):
             smtp_port = 587
 
         if not smtp_user or not smtp_pass:
-            print(f"[ERROR] SMTP credentials missing. SMTP_USER={smtp_user}, SMTP_PASS={'set' if smtp_pass else 'MISSING'}")
-            raise ValueError("SMTP credentials not configured")
+            logger.error(f"[EMAIL] SMTP credentials missing. USER={bool(smtp_user)}, PASS={bool(smtp_pass)}")
+            return False
 
-        print(f"[DEBUG] Sending OTP email to {to_email} via {smtp_user}")
+        logger.info(f"[EMAIL] Attempting to send OTP email to {to_email} via {smtp_user}")
 
         msg = MIMEMultipart("alternative")
         msg["Subject"] = "Your MediLink Verification Code"
-        msg["From"] = f"MediLink <{smtp_user}>"
+        msg["From"] = smtp_user
         msg["To"] = to_email
 
         html_content = f"""
@@ -183,18 +184,20 @@ async def send_otp_email(to_email: str, otp: str, name: str):
 
         msg.attach(MIMEText(html_content, "html"))
 
-        server = smtplib.SMTP(smtp_host, smtp_port)
+        server = smtplib.SMTP(smtp_host, smtp_port, timeout=20)
+        server.ehlo()
         server.starttls()
+        server.ehlo()
         server.login(smtp_user, smtp_pass)
         server.sendmail(smtp_user, to_email, msg.as_string())
-        server.quit()
+        server.close()
 
-        print(f"[DEBUG] Email sent successfully to {to_email}")
+        logger.info("[EMAIL] OTP email sent successfully to %s", to_email)
         return True
 
     except Exception as e:
-        print(f"[ERROR] Failed to send email to {to_email}: {str(e)}")
-        raise e
+        logger.error("[EMAIL] Failed to send email to %s: %s", to_email, str(e))
+        return False
 
 
 def send_email(to_email: str, subject: str, body: str) -> bool:
