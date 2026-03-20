@@ -4,22 +4,39 @@ import smtplib
 import ssl
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from typing import Optional
+
+# Pre-import to quiet linter errors, though we'll handle missing packages gracefully
+try:
+    import requests
+except ImportError:
+    requests = None
+
+try:
+    from twilio.rest import Client
+except ImportError:
+    Client = None
 
 logger = logging.getLogger("medilink.notification")
 
-def send_otp_email(to_email: str, otp: str, name: str):
+def send_otp_email(to_email: str, otp: str, name: str) -> bool:
     try:
-        SMTP_USER = os.getenv("SMTP_USER")
-        SMTP_PASS = os.getenv("SMTP_PASS")
-        SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com")
-        SMTP_SSL_PORT = 465
+        user = os.getenv("SMTP_USER")
+        password = os.getenv("SMTP_PASS")
+        host = os.getenv("SMTP_HOST", "smtp.gmail.com")
+        port = 465
 
-        if not SMTP_USER or not SMTP_PASS:
-            raise ValueError("SMTP credentials not configured")
+        if not user or not password:
+            logger.error("[EMAIL] SMTP credentials not configured")
+            return False
+
+        # Ensure types are concrete strings for the linter
+        smtp_user: str = str(user)
+        smtp_pass: str = str(password)
 
         msg = MIMEMultipart("alternative")
         msg["Subject"] = "Your MediLink Verification Code"
-        msg["From"] = f"MediLink <{SMTP_USER}>"
+        msg["From"] = f"MediLink <{smtp_user}>"
         msg["To"] = to_email
 
         html_content = f"""
@@ -44,29 +61,28 @@ def send_otp_email(to_email: str, otp: str, name: str):
         msg.attach(MIMEText(html_content, "html"))
 
         context = ssl.create_default_context()
-        with smtplib.SMTP_SSL(SMTP_HOST, SMTP_SSL_PORT, context=context) as server:
-            server.login(SMTP_USER, SMTP_PASS)
-            server.sendmail(SMTP_USER, to_email, msg.as_string())
+        with smtplib.SMTP_SSL(host, port, context=context) as server:
+            server.login(smtp_user, smtp_pass)
+            server.sendmail(smtp_user, to_email, msg.as_string())
 
-        print(f"[DEBUG] Email sent successfully to {to_email}")
+        logger.info(f"[DEBUG] Email sent successfully to {to_email}")
         return True
 
     except Exception as e:
-        print(f"[ERROR] Failed to send email to {to_email}: {str(e)}")
-        raise e
+        logger.error(f"[ERROR] Failed to send email to {to_email}: {str(e)}")
+        return False
 
 
-def send_otp_sms(to_phone: str, otp: str):
+def send_otp_sms(to_phone: str, otp: str) -> bool:
     try:
-        import requests
-        FAST2SMS_API_KEY = os.getenv("FAST2SMS_API_KEY")
+        fast2sms_key = os.getenv("FAST2SMS_API_KEY")
 
-        if FAST2SMS_API_KEY:
+        if fast2sms_key and requests:
             phone_number = to_phone.replace("+91", "").replace("+", "").strip()
             if len(phone_number) > 10:
                 phone_number = phone_number[-10:]
 
-            print(f"[DEBUG] Sending SMS to {phone_number} via Fast2SMS")
+            logger.info(f"[DEBUG] Sending SMS to {phone_number} via Fast2SMS")
 
             url = "https://www.fast2sms.com/dev/bulkV2"
             payload = {
@@ -75,7 +91,7 @@ def send_otp_sms(to_phone: str, otp: str):
                 "numbers": phone_number,
             }
             headers = {
-                "authorization": FAST2SMS_API_KEY,
+                "authorization": str(fast2sms_key),
                 "Content-Type": "application/json"
             }
 
@@ -83,62 +99,69 @@ def send_otp_sms(to_phone: str, otp: str):
             data = response.json()
 
             if data.get("return") == True:
-                print(f"[DEBUG] SMS sent successfully via Fast2SMS to {phone_number}")
+                logger.info(f"[DEBUG] SMS sent successfully via Fast2SMS to {phone_number}")
                 return True
             else:
-                raise Exception(f"Fast2SMS error: {data.get('message', 'Unknown error')}")
-
-        else:
-            from twilio.rest import Client
-            TWILIO_SID = os.getenv("TWILIO_SID")
-            TWILIO_TOKEN = os.getenv("TWILIO_TOKEN")
-            TWILIO_FROM = os.getenv("TWILIO_FROM")
-
-            if not TWILIO_SID or not TWILIO_TOKEN:
-                print(f"[WARNING] No SMS provider configured")
+                logger.error(f"Fast2SMS error: {data.get('message', 'Unknown error')}")
                 return False
 
-            client = Client(TWILIO_SID, TWILIO_TOKEN)
+        elif Client:
+            sid = os.getenv("TWILIO_SID")
+            token = os.getenv("TWILIO_TOKEN")
+            from_num = os.getenv("TWILIO_FROM")
+
+            if not sid or not token or not from_num:
+                logger.warning("[WARNING] No SMS provider configured or credentials missing")
+                return False
+
+            client = Client(str(sid), str(token))
             message = client.messages.create(
                 body=f"MediLink Emergency Medical Records\n\nYour verification code is: {otp}\n\nValid for 30 minutes. Do not share this code.\n\n- MediLink Team",
-                from_=TWILIO_FROM,
+                from_=str(from_num),
                 to=to_phone
             )
-            print(f"[DEBUG] SMS sent via Twilio: {message.sid}")
+            logger.info(f"[DEBUG] SMS sent via Twilio: {message.sid}")
             return True
+        else:
+            logger.warning("[WARNING] Neither Fast2SMS nor Twilio is available")
+            return False
 
     except Exception as e:
-        print(f"[ERROR] SMS sending failed for {to_phone}: {str(e)}")
+        logger.error(f"[ERROR] SMS sending failed for {to_phone}: {str(e)}")
         return False
 
 
-def send_email(to_email: str, subject: str, html_content: str):
+def send_email(to_email: str, subject: str, html_content: str) -> bool:
     try:
-        SMTP_USER = os.getenv("SMTP_USER")
-        SMTP_PASS = os.getenv("SMTP_PASS")
-        SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com")
-        SMTP_SSL_PORT = 465
+        user = os.getenv("SMTP_USER")
+        password = os.getenv("SMTP_PASS")
+        host = os.getenv("SMTP_HOST", "smtp.gmail.com")
+        port = 465
 
-        if not SMTP_USER or not SMTP_PASS:
-            raise ValueError("SMTP credentials not configured")
+        if not user or not password:
+            logger.error("[EMAIL] SMTP credentials not configured")
+            return False
+
+        smtp_user: str = str(user)
+        smtp_pass: str = str(password)
 
         msg = MIMEMultipart("alternative")
         msg["Subject"] = subject
-        msg["From"] = f"MediLink <{SMTP_USER}>"
+        msg["From"] = f"MediLink <{smtp_user}>"
         msg["To"] = to_email
         msg.attach(MIMEText(html_content, "html"))
 
         context = ssl.create_default_context()
-        with smtplib.SMTP_SSL(SMTP_HOST, SMTP_SSL_PORT, context=context) as server:
-            server.login(SMTP_USER, SMTP_PASS)
-            server.sendmail(SMTP_USER, to_email, msg.as_string())
+        with smtplib.SMTP_SSL(host, port, context=context) as server:
+            server.login(smtp_user, smtp_pass)
+            server.sendmail(smtp_user, to_email, msg.as_string())
 
-        print(f"[DEBUG] General email sent to {to_email}")
+        logger.info(f"[DEBUG] General email sent to {to_email}")
         return True
 
     except Exception as e:
-        print(f"[ERROR] Failed to send general email to {to_email}: {str(e)}")
-        raise e
+        logger.error(f"[ERROR] Failed to send general email to {to_email}: {str(e)}")
+        return False
 
 def notify_admin_fundraising(application_details: dict):
     admin_email = os.getenv("ADMIN_EMAIL", "medilinkorg@yahoo.com")
