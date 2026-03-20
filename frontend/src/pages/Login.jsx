@@ -1,123 +1,523 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import toast from 'react-hot-toast'
 import { API_URL } from '../config'
-import OTPModal from '../components/OTPModal'
+import axios from 'axios'
+
+// Minimal Custom Countries List for Login
+const COUNTRIES = [
+  { name: 'India', code: '+91', flag: '🇮🇳' },
+  { name: 'United States', code: '+1', flag: '🇺🇸' },
+  { name: 'United Kingdom', code: '+44', flag: '🇬🇧' },
+  { name: 'Australia', code: '+61', flag: '🇦🇺' },
+  { name: 'Canada', code: '+1', flag: '🇨🇦' },
+  { name: 'Germany', code: '+49', flag: '🇩🇪' },
+  { name: 'France', code: '+33', flag: '🇫🇷' }]
 
 export default function Login() {
-  const [form, setForm] = useState({ email: '', password: '' })
+  const [loginMethod, setLoginMethod] = useState('email') // 'email' | 'phone'
+  const [emailValue, setEmailValue] = useState('')
+  const [countryCode, setCountryCode] = useState('+91')
+  const [flag, setFlag] = useState('🇮🇳')
+  const [phoneNumber, setPhoneNumber] = useState('')
+  const [countryDropdownOpen, setCountryDropdownOpen] = useState(false)
+  const [countrySearch, setCountrySearch] = useState('')
+
   const [loading, setLoading] = useState(false)
   
-  // OTP integration
-  const [showOTP, setShowOTP] = useState(false)
-  const [otpIdentifier, setOtpIdentifier] = useState('')
+  // OTP flow specific
+  const [step, setStep] = useState('form') // 'form' | 'otp'
+  const [boxValues, setBoxValues] = useState(['', '', '', '', '', ''])
+  const [boxMasked, setBoxMasked] = useState([false, false, false, false, false, false])
+  const [countdown, setCountdown] = useState(60)
+  const [isOtpSuccess, setIsOtpSuccess] = useState(false)
+  const [isOtpFailed, setIsOtpFailed] = useState(false)
+
+  const inputRefs = useRef([null, null, null, null, null, null])
+  const maskTimers = useRef([null, null, null, null, null, null])
 
   const { login } = useAuth()
   const navigate = useNavigate()
 
-  const handlePasswordSubmit = async (e) => {
+  const filteredCountries = useMemo(() => {
+    return COUNTRIES.filter(c => 
+      c.name.toLowerCase().includes(countrySearch.toLowerCase()) || 
+      c.code.includes(countrySearch)
+    )
+  }, [countrySearch])
+
+  // Countdown timer for OTP
+  useEffect(() => {
+    let t = null
+    if (step === 'otp' && countdown > 0) {
+      t = setTimeout(() => setCountdown(c => c - 1), 1000)
+    }
+    return () => clearTimeout(t)
+  }, [step, countdown])
+
+  // Cleanup all mask timers on unmount
+  useEffect(() => {
+    return () => {
+      maskTimers.current.forEach(timer => {
+        if (timer) clearTimeout(timer)
+      })
+    }
+  }, [])
+
+  // Auto-focus first OTP box when OTP screen appears
+  useEffect(() => {
+    if (step === 'otp') {
+      setTimeout(() => {
+        inputRefs.current[0]?.focus()
+      }, 300)
+    }
+  }, [step])
+
+  // Shake and clear on wrong OTP
+  useEffect(() => {
+    if (isOtpFailed) {
+      setTimeout(() => {
+        setBoxValues(['', '', '', '', '', ''])
+        setBoxMasked([false, false, false, false, false, false])
+        maskTimers.current.forEach(timer => {
+          if (timer) clearTimeout(timer)
+        })
+        maskTimers.current = [null, null, null, null, null, null]
+        setIsOtpFailed(false)
+        inputRefs.current[0]?.focus()
+      }, 600)
+    }
+  }, [isOtpFailed])
+
+  const handleSubmit = async (e) => {
     e.preventDefault()
+    if (loginMethod === 'email' && !emailValue.trim()) return toast.error('Please enter your email')
+    if (loginMethod === 'phone' && !phoneNumber.trim()) return toast.error('Please enter your phone number')
+
     setLoading(true)
     try {
-      const res = await fetch(`${API_URL}/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.detail || 'Login failed')
-      
-      // Credentials verified! Now trigger OTP modal.
-      setOtpIdentifier(data.identifier || form.email)
-      setShowOTP(true)
+      const loginData = {}
+      if (loginMethod === 'email') {
+        loginData.email = emailValue.trim().toLowerCase()
+      } else {
+        loginData.phone = countryCode + phoneNumber
+      }
+
+      // Feature 2 requires backend to handle `/auth/login/send-otp`. We send exactly what the user entered.
+      // But just in case VITE_API_URL isn't set, we fallback to API_URL (from config).
+      const baseUrl = import.meta.env.VITE_API_URL || API_URL
+      const response = await axios.post(
+        `${baseUrl}/auth/login/send-otp`,
+        loginData
+      )
+
+      setStep('otp')
+      setCountdown(60)
+      setBoxValues(['', '', '', '', '', ''])
+      setBoxMasked([false, false, false, false, false, false])
     } catch (err) {
-      toast.error(err.message || 'Login failed. Check your credentials.')
+      console.error(err)
+      toast.error(err.response?.data?.detail || err.message || 'Failed to send OTP')
     } finally {
       setLoading(false)
     }
   }
 
-  const handleOTPVerifySuccess = (authData) => {
-    // The verify endpoint returns the JWT on success for existing users
-    setShowOTP(false)
-    login(authData.access_token, authData.user)
-    toast.success(`Welcome back, ${authData.user.name}!`)
-    navigate('/dashboard')
+  // ---- OTP MASKING LOGIC ----
+  const handleOtpInput = (index, value) => {
+    if (!/^\d*$/.test(value)) return
+
+    const newValues = [...boxValues]
+    newValues[index] = value.slice(-1)
+    setBoxValues(newValues)
+
+    const newMasked = [...boxMasked]
+    newMasked[index] = false
+    setBoxMasked(newMasked)
+
+    if (maskTimers.current[index]) {
+      clearTimeout(maskTimers.current[index])
+    }
+
+    if (value) {
+      maskTimers.current[index] = setTimeout(() => {
+        setBoxMasked(prev => {
+          const updated = [...prev]
+          updated[index] = true
+          return updated
+        })
+      }, 3000)
+
+      if (index < 5 && value) {
+        inputRefs.current[index + 1]?.focus()
+      }
+    }
+
+    const allValues = [...newValues]
+    if (allValues.join('').length === 6) {
+      verifyOtp(allValues.join(''))
+    }
+  }
+
+  const handleOtpKeyDown = (index, e) => {
+    if (e.key === 'Backspace') {
+      if (boxValues[index]) {
+        const newValues = [...boxValues]
+        newValues[index] = ''
+        setBoxValues(newValues)
+        const newMasked = [...boxMasked]
+        newMasked[index] = false
+        setBoxMasked(newMasked)
+        if (maskTimers.current[index]) {
+          clearTimeout(maskTimers.current[index])
+        }
+      } else if (index > 0) {
+        inputRefs.current[index - 1]?.focus()
+      }
+    }
+  }
+
+  const handleOtpPaste = (e) => {
+    e.preventDefault()
+    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6)
+    if (!pasted) return
+
+    const newValues = [...boxValues]
+    const newMasked = [...boxMasked]
+
+    pasted.split('').forEach((digit, i) => {
+      newValues[i] = digit
+      newMasked[i] = false
+
+      if (maskTimers.current[i]) clearTimeout(maskTimers.current[i])
+
+      maskTimers.current[i] = setTimeout(() => {
+        setBoxMasked(prev => {
+          const updated = [...prev]
+          updated[i] = true
+          return updated
+        })
+      }, 3000)
+    })
+
+    setBoxValues(newValues)
+    setBoxMasked(newMasked)
+
+    const focusIndex = Math.min(pasted.length, 5)
+    inputRefs.current[focusIndex]?.focus()
+
+    if (pasted.length === 6) {
+      verifyOtp(pasted)
+    }
+  }
+
+  const verifyOtp = async (otpCode) => {
+    if (otpCode.length !== 6) return
+    if (loading || isOtpSuccess) return
+
+    setLoading(true)
+
+    try {
+      const identifier = loginMethod === 'email' ? emailValue.trim().toLowerCase() : countryCode + phoneNumber
+      const baseUrl = import.meta.env.VITE_API_URL || API_URL
+      // The instruction asks to use /auth/login/send-otp above, so verification might just be the existing /auth/verify-otp
+      // but let's send exactly what we did before.
+      const res = await axios.post(`${baseUrl}/auth/verify-otp`, { identifier: identifier, otp_code: otpCode })
+
+      setIsOtpSuccess(true)
+      setTimeout(() => {
+        toast.success(`Welcome back!`)
+        login(res.data.access_token, res.data.user)
+        navigate('/dashboard')
+      }, 1000)
+
+    } catch (err) {
+      setIsOtpFailed(true)
+      toast.error(err.response?.data?.detail || 'Incorrect OTP. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const submitOtp = () => {
+    const enteredOtp = boxValues.join('')
+    verifyOtp(enteredOtp)
+  }
+
+  const handleResend = async () => {
+    setLoading(true)
+    try {
+      const loginData = {}
+      if (loginMethod === 'email') {
+        loginData.email = emailValue.trim().toLowerCase()
+      } else {
+        loginData.phone = countryCode + phoneNumber
+      }
+      const baseUrl = import.meta.env.VITE_API_URL || API_URL
+      await axios.post(`${baseUrl}/auth/login/send-otp`, loginData)
+      toast.success('OTP resent successfully')
+      setCountdown(60)
+    } catch (err) {
+      toast.error('Failed to resend OTP')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 pt-16">
-      <div className="w-full max-w-md">
-
-        {/* Header */}
-        <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-gradient-to-br from-primary to-slate-800 rounded-2xl flex items-center justify-center mx-auto mb-4 text-3xl shadow-xl">🏥</div>
-          <h1 className="text-3xl font-bold text-primary mb-2">Welcome Back</h1>
-          <p className="text-secondary">Sign in to your MediLink account</p>
-        </div>
-
-        <form onSubmit={handlePasswordSubmit} className="space-y-5">
-          <div>
-            <label className="block text-sm font-medium text-secondary mb-2">Email Address</label>
-            <input
-              type="text"
-              required
-              className="input-field w-full outline-none p-3 rounded-xl bg-dark text-primary border border-border focus:border-primary"
-              placeholder="john@example.com"
-              value={form.email}
-              onChange={e => setForm({ ...form, email: e.target.value })}
-            />
+    <div className="min-h-screen flex items-center justify-center px-4 pt-16 pb-10 overflow-hidden relative" onClick={() => setCountryDropdownOpen(false)}>
+      <div className="w-full max-w-md relative z-10 p-6 sm:p-0">
+        
+        {/* LOGIN FORM VIEW */}
+        <div className={`transition-all duration-500 transform ${step === 'form' ? 'translate-y-0 opacity-100 scale-100 pointer-events-auto' : '-translate-y-full opacity-0 scale-95 pointer-events-none absolute inset-0'}`}>
+          <div className="text-center mb-8">
+            <div className="w-16 h-16 bg-gradient-to-br from-primary to-slate-800 rounded-2xl flex items-center justify-center mx-auto mb-4 text-3xl shadow-xl">🏥</div>
+            <h1 className="text-3xl font-bold text-primary mb-2">Welcome Back</h1>
+            <p className="text-secondary">Sign in to your MediLink account</p>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-secondary mb-2">Password</label>
-            <input
-              type="password"
-              required
-              className="input-field w-full outline-none p-3 rounded-xl bg-dark text-primary border border-border focus:border-primary"
-              placeholder="••••••••"
-              value={form.password}
-              onChange={e => setForm({ ...form, password: e.target.value })}
-            />
-          </div>
-          <button type="submit" disabled={loading} className="btn-primary w-full py-3">
-            {loading ? 'Checking credentials...' : 'Login Securely'}
-          </button>
 
-          <div className="p-4 bg-surface rounded-xl border border-border">
-            <p className="text-xs text-muted mb-3 text-center uppercase tracking-wider font-bold">⚡ Quick Demo Login</p>
-            <div className="flex gap-2 justify-center">
-              <button type="button" onClick={() => setForm({ email: 'john.doe@demo.com', password: 'demo1234' })}
-                className="px-3 py-1.5 bg-dark hover:brightness-110 rounded text-xs text-primary transition-colors border border-border">
-                Patient 1
+          <form onSubmit={handleSubmit} className="space-y-5 bg-[var(--bg-card)] p-6 rounded-2xl border border-[var(--border)] shadow-xl relative z-10 w-full mb-8">
+            
+            {/* FEATURE 1: TWO PILL BUTTONS */}
+            <div style={{
+              background: 'var(--bg-card)',
+              border: '1px solid var(--border)',
+              borderRadius: '999px',
+              padding: '4px',
+              display: 'flex'
+            }} className="mb-6">
+              <button
+                type="button"
+                onClick={() => setLoginMethod('email')}
+                style={{
+                  flex: 1,
+                  padding: '8px 20px',
+                  borderRadius: '999px',
+                  fontSize: '14px',
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  background: loginMethod === 'email' ? '#E5341A' : 'transparent',
+                  color: loginMethod === 'email' ? '#FFFFFF' : 'var(--text-secondary)',
+                  transition: 'all 0.2s ease',
+                  border: 'none',
+                }}
+              >
+                Email
               </button>
-              <button type="button" onClick={() => setForm({ email: 'jane.smith@demo.com', password: 'demo1234' })}
-                className="px-3 py-1.5 bg-dark hover:brightness-110 rounded text-xs text-primary transition-colors border border-border">
-                Patient 2
+              <button
+                type="button"
+                onClick={() => setLoginMethod('phone')}
+                style={{
+                  flex: 1,
+                  padding: '8px 20px',
+                  borderRadius: '999px',
+                  fontSize: '14px',
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  background: loginMethod === 'phone' ? '#E5341A' : 'transparent',
+                  color: loginMethod === 'phone' ? '#FFFFFF' : 'var(--text-secondary)',
+                  transition: 'all 0.2s ease',
+                  border: 'none',
+                }}
+              >
+                Phone Number
               </button>
             </div>
-          </div>
-        </form>
 
-        {/* Register link */}
-        <div className="mt-8 pt-6 border-t border-border text-center">
-          <p className="text-secondary">
-            Don't have an account?{' '}
-            <Link to="/register" className="text-primary hover:text-primary font-medium transition-colors">
-              Register
-            </Link>
-          </p>
+            {loginMethod === 'email' ? (
+              <div>
+                <input
+                  type="email"
+                  className="w-full px-4 py-3 bg-[var(--dark)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] focus:outline-none focus:border-[#E5341A]"
+                  placeholder="you@example.com"
+                  value={emailValue}
+                  onChange={e => setEmailValue(e.target.value)}
+                />
+              </div>
+            ) : (
+              <div>
+                <div className="flex gap-2">
+                  <div className="relative">
+                    <button 
+                      type="button" 
+                      className="w-[110px] h-[50px] bg-[var(--dark)] border border-[var(--border)] rounded-xl flex items-center justify-center gap-2 focus:outline-none focus:border-[#E5341A] transition-colors"
+                      onClick={(e) => { e.stopPropagation(); setCountryDropdownOpen(!countryDropdownOpen) }}
+                    >
+                      <span>{flag}</span>
+                      <span className="text-sm font-bold text-[var(--text-primary)]">{countryCode}</span>
+                    </button>
+                    {countryDropdownOpen && (
+                      <div 
+                        className="absolute top-full left-0 mt-2 w-64 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-2xl z-[100] max-h-[260px] flex flex-col overflow-hidden animate-slideDown"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <div className="p-2 border-b border-[var(--border)]">
+                          <input 
+                            type="text" 
+                            placeholder="Search country..." 
+                            className="w-full px-3 py-2 bg-[var(--dark)] border border-[var(--border)] rounded-lg text-sm text-[var(--text-primary)] focus:outline-none focus:border-[#E5341A]"
+                            value={countrySearch}
+                            onChange={(e) => setCountrySearch(e.target.value)}
+                          />
+                        </div>
+                        <div className="flex-1 overflow-y-auto">
+                          {filteredCountries.map((c) => (
+                            <div 
+                              key={c.name}
+                              className="flex items-center gap-3 px-3.5 py-2.5 hover:bg-[var(--dark)] cursor-pointer transition-colors"
+                              onClick={() => { setCountryCode(c.code); setFlag(c.flag); setCountryDropdownOpen(false) }}
+                            >
+                              <span className="text-lg">{c.flag}</span>
+                              <span className="text-sm text-[var(--text-primary)] truncate flex-1">{c.name}</span>
+                              <span className="text-sm text-[var(--text-secondary)] font-medium">{c.code}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  <input
+                    type="tel"
+                    className="flex-1 px-4 py-3 bg-[var(--dark)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] focus:outline-none focus:border-[#E5341A]"
+                    placeholder="Mobile number"
+                    value={phoneNumber}
+                    onChange={e => setPhoneNumber(e.target.value.replace(/\D/g, ''))}
+                  />
+                </div>
+              </div>
+            )}
+
+            <p style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+              OTP will be sent to your registered contact
+            </p>
+
+            <button type="submit" disabled={loading} className="w-full py-4 bg-[#E5341A] text-white font-bold rounded-xl transition-colors hover:bg-red-600 disabled:opacity-50 flex items-center justify-center gap-2 mt-2">
+              {loading ? (
+                <>
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  Sending...
+                </>
+              ) : 'Continue'}
+            </button>
+          </form>
+
+          {/* Quick Demo REMOVED (Feature 3) */}
+
+          <div className="mt-8 pt-6 border-t border-[var(--border)] text-center">
+            <p className="text-[var(--text-secondary)]">
+              Don't have an account?{' '}
+              <Link to="/register" className="text-[#E5341A] hover:text-[#E5341A] font-medium transition-colors">
+                Register
+              </Link>
+            </p>
+          </div>
         </div>
 
-      </div>
+        {/* OTP Entry View (Reused from Register) */}
+        <div className={`transition-all duration-500 transform absolute top-0 left-0 right-0 ${step === 'otp' ? 'translate-y-0 opacity-100 scale-100 pointer-events-auto' : 'translate-y-32 opacity-0 scale-95 pointer-events-none'}`}>
+          <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-8 shadow-2xl text-center">
+             <h2 className="text-[20px] font-bold text-[var(--text-primary)] mb-2">Enter Verification Code</h2>
+             <p className="text-[13px] text-[var(--text-secondary)] mb-6">
+               We sent a code to {loginMethod === 'email' ? emailValue : `${countryCode} ${phoneNumber.slice(-4)}`}
+             </p>
 
-      <OTPModal
-        isOpen={showOTP}
-        identifier={otpIdentifier}
-        isRegistration={false}
-        onVerifySuccess={handleOTPVerifySuccess}
-        onClose={() => setShowOTP(false)}
-      />
+             {/* OTP Boxes (Secure overlay architecture) */}
+             <div
+               className={`mb-8 relative ${isOtpFailed ? 'animate-otpShake' : ''}`}
+               style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}
+             >
+               {isOtpSuccess && (
+                 <div className="absolute inset-0 flex items-center justify-center z-10 animate-fade-in pointer-events-none">
+                   <div className="w-16 h-16 bg-[#1D9E75] rounded-full flex items-center justify-center shadow-lg">
+                     <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                       <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                     </svg>
+                   </div>
+                 </div>
+               )}
+               {[0, 1, 2, 3, 4, 5].map((index) => (
+                 <div
+                   key={index}
+                   style={{ position: 'relative', width: '48px', height: '56px' }}
+                 >
+                   <input
+                     ref={el => inputRefs.current[index] = el}
+                     type="text"
+                     inputMode="numeric"
+                     maxLength={1}
+                     value={boxValues[index]}
+                     onChange={e => handleOtpInput(index, e.target.value)}
+                     onKeyDown={e => handleOtpKeyDown(index, e)}
+                     onPaste={index === 0 ? handleOtpPaste : undefined}
+                     autoComplete="one-time-code"
+                     autoCorrect="off"
+                     autoCapitalize="off"
+                     spellCheck="false"
+                     data-lpignore="true"
+                     style={{
+                       position: 'absolute',
+                       inset: 0,
+                       width: '100%',
+                       height: '100%',
+                       opacity: 0,
+                       cursor: 'text',
+                       zIndex: 2,
+                       fontSize: '22px',
+                     }}
+                   />
+                   <div
+                     style={{
+                       position: 'absolute',
+                       inset: 0,
+                       display: 'flex',
+                       alignItems: 'center',
+                       justifyContent: 'center',
+                       fontSize: boxMasked[index] ? '28px' : '22px',
+                       fontWeight: 700,
+                       color: isOtpSuccess ? '#1D9E75' : isOtpFailed ? '#E5341A' : 'var(--text-primary)',
+                       background: isOtpSuccess ? 'rgba(29,158,117,0.1)' : isOtpFailed ? 'rgba(229,52,26,0.1)' : 'var(--bg-card)',
+                       border: `1.5px solid ${boxValues[index] ? isOtpSuccess ? '#1D9E75' : isOtpFailed ? '#E5341A' : '#E5341A' : 'var(--border)'}`,
+                       borderRadius: '12px',
+                       transition: 'all 0.2s ease',
+                       userSelect: 'none',
+                       pointerEvents: 'none',
+                       zIndex: 1,
+                     }}
+                   >
+                     {boxValues[index] ? boxMasked[index] ? '•' : boxValues[index] : ''}
+                   </div>
+                 </div>
+               ))}
+             </div>
+
+             <button
+                onClick={submitOtp}
+                disabled={loading || boxValues.join('').length !== 6}
+                className="w-full py-4 bg-[#E5341A] text-white font-bold rounded-[12px] transition-colors hover:bg-red-600 mb-6 disabled:opacity-50 disabled:cursor-not-allowed"
+             >
+                {loading ? 'Verifying...' : 'Verify Secure Login'}
+             </button>
+
+             <div className="text-sm">
+                {countdown > 0 ? (
+                  <span className="text-[var(--text-secondary)]">Resend code in <span className="font-bold text-[var(--text-primary)]">{countdown}s</span></span>
+                ) : (
+                  <button onClick={handleResend} className="text-[#E5341A] font-semibold hover:underline bg-transparent border-none cursor-pointer">
+                    Resend OTP
+                  </button>
+                )}
+             </div>
+
+             <button 
+               onClick={() => setStep('form')}
+               className="mt-6 text-[13px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] bg-transparent border-none cursor-pointer"
+             >
+                ← Back to login
+             </button>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

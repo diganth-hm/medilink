@@ -4,6 +4,7 @@ import toast from 'react-hot-toast'
 import FingerprintScannerOverlay from '../components/FingerprintScannerOverlay'
 import { useAuth } from '../context/AuthContext'
 import { API_URL } from '../config'
+import jsQR from 'jsqr'
 
 export default function ScanQR() {
   const [manualToken, setManualToken] = useState('')
@@ -62,30 +63,63 @@ export default function ScanQR() {
     setScannerStarted(false)
   }
 
-  const handleFileScan = async (e) => {
+  const handleFileScan = (e) => {
     const file = e.target.files[0]
     if (!file) return
 
     try {
-      // Toast to show we are processing
       const toastId = toast.loading('Scanning image...')
       
-      const scanner = await getScannerInstance()
-      const decodedText = await scanner.scanFileV2(file)
+      const img = new Image()
+      const objectUrl = URL.createObjectURL(file)
       
-      toast.dismiss(toastId)
-      if (decodedText && decodedText.decodedText) {
-        toast.success('QR Code found!')
-        handleScanResult(decodedText.decodedText)
-      } else {
-        toast.error('No QR code found in this image. Please try a clearer photo.', { duration: 4000 })
+      img.onload = () => {
+        URL.revokeObjectURL(objectUrl)
+        const canvas = document.createElement('canvas')
+        const context = canvas.getContext('2d', { willReadFrequently: true })
+        
+        // Scale down large images to avoid performance issues
+        const maxDim = 1000
+        let width = img.width
+        let height = img.height
+        
+        if (width > maxDim || height > maxDim) {
+          const ratio = Math.min(maxDim / width, maxDim / height)
+          width = width * ratio
+          height = height * ratio
+        }
+        
+        canvas.width = width
+        canvas.height = height
+        context.drawImage(img, 0, 0, width, height)
+        
+        const imageData = context.getImageData(0, 0, width, height)
+        const code = jsQR(imageData.data, imageData.width, imageData.height, {
+          inversionAttempts: "dontInvert",
+        })
+        
+        toast.dismiss(toastId)
+        
+        if (code && code.data) {
+          toast.success('QR Code found!')
+          handleScanResult(code.data)
+        } else {
+          toast.error('No QR code found in this image. Please try a clearer photo.', { duration: 4000 })
+        }
       }
+      
+      img.onerror = () => {
+        toast.dismiss(toastId)
+        toast.error('Failed to load image.')
+      }
+      
+      img.src = objectUrl
+      
     } catch (err) {
       toast.dismiss()
       console.error('File scan error:', err)
-      toast.error('No QR code found in this image. Please try a clearer photo.', { duration: 4000 })
+      toast.error('An error occurred while scanning.', { duration: 4000 })
     } finally {
-      // Reset input so same file can be selected again
       e.target.value = ''
     }
   }

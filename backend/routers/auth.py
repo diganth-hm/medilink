@@ -7,7 +7,8 @@ from schemas import UserRegister, UserLogin, Token, UserOut, OTPRequest, OTPVeri
 from auth import hash_password, verify_password, create_access_token, get_current_user
 from services.otp_service import create_otp, verify_otp, get_otp_remaining_seconds
 from services.notification_service import send_email, send_sms, send_otp_email
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
+from typing import Optional
 import os
 
 logger = logging.getLogger("medilink.auth")
@@ -19,6 +20,10 @@ class BiometricEnrollRequest(BaseModel):
 
 class BiometricVerifyRequest(BaseModel):
     credential_id: str
+
+class OTPLoginRequest(BaseModel):
+    email: Optional[EmailStr] = None
+    phone: Optional[str] = None
 
 OTP_EXPIRY_MINUTES = int(os.getenv("OTP_EXPIRY_MINUTES", "10"))
 
@@ -100,8 +105,8 @@ async def send_otp_route(request: OTPRequest, background_tasks: BackgroundTasks,
     expiry_min = OTP_EXPIRY_MINUTES
     
     otp_message = (
-        f"Your verification OTP is: {otp_code}\n"
-        f"This OTP expires in {expiry_min} minutes."
+        f"[MediLink] Your verification OTP is: {otp_code}\n"
+        f"This OTP expires in {expiry_min} minutes. Do not share."
     )
 
     if is_email:
@@ -121,6 +126,49 @@ async def send_otp_route(request: OTPRequest, background_tasks: BackgroundTasks,
         "success": True,
         "message": "OTP sent successfully.",
         "expires_in_seconds": expiry_min * 60,
+    }
+
+@router.post("/login/send-otp")
+async def login_send_otp_route(request: OTPLoginRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+    """
+    Generate a 6-digit OTP for the given email or mobile number using passwordless flow.
+    """
+    identifier = request.email if request.email else request.phone
+    if not identifier:
+        raise HTTPException(status_code=400, detail="Must provide email or phone")
+
+    user = db.query(User).filter(
+        (User.email == identifier) | (User.mobile_number == identifier)
+    ).first()
+    
+    if not user:
+        # For security, you might want to obscure whether an account exists, but for UX we just throw an error.
+        raise HTTPException(status_code=404, detail="Account not found. Please register first.")
+
+    channel = "email" if request.email else "sms"
+    otp_code = create_otp(db, identifier, channel)
+
+    is_email = (channel == "email")
+    expiry_min = OTP_EXPIRY_MINUTES
+    
+    otp_message = (
+        f"[MediLink] Your verification OTP is: {otp_code}\n"
+        f"This OTP expires in {expiry_min} minutes. Do not share."
+    )
+
+    if is_email:
+        background_tasks.add_task(send_otp_email, identifier, otp_code, user.name)
+        logger.info("[AUTH] OTP generated; queued background email task for %s", identifier)
+    else:
+        background_tasks.add_task(send_sms, identifier, otp_message)
+        logger.info("[AUTH] OTP generated; queued background SMS task for %s", identifier)
+
+    if os.getenv("ENVIRONMENT") != "production":
+        print(f"\n[DEV MODE] DEV OTP for {identifier}: {otp_code}\n")
+
+    return {
+        "success": True,
+        "message": "OTP sent successfully.",
     }
 
 

@@ -3,6 +3,7 @@ import { Toaster } from 'react-hot-toast'
 import { AuthProvider } from './context/AuthContext'
 import { LocationProvider } from './context/LocationContext'
 import Navbar from './components/Navbar'
+import Footer from './components/Footer'
 import SplashScreen from './components/SplashScreen'
 import AnimatedBackground from './components/AnimatedBackground'
 import ProtectedRoute from './components/ProtectedRoute'
@@ -59,8 +60,9 @@ export default function App() {
             error: { iconTheme: { primary: '#ef4444', secondary: '#fff' } },
           }}
         />
-        <div style={{ position: 'relative', zIndex: 1 }}>
-        <Routes>
+        <div className="min-h-screen flex flex-col relative z-20">
+          <div className="flex-1 pb-16">
+          <Routes>
           {/* Public routes */}
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
@@ -96,6 +98,8 @@ export default function App() {
             </div>
           } />
         </Routes>
+        </div>
+        <Footer />
         </div>
       </BrowserRouter>
       </LocationProvider>

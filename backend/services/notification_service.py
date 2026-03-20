@@ -326,6 +326,14 @@ def send_sms(phone_number: str, message: str) -> bool:
     Public API — send an SMS.
     Tries Twilio → Fast2SMS → dev fallback.
     """
+    # Enforce E.164 formatting
+    phone_number = "".join(filter(lambda x: x.isdigit() or x == "+", phone_number))
+    if not phone_number.startswith("+"):
+        if len(phone_number) == 10:
+            phone_number = f"+91{phone_number}"
+        else:
+            phone_number = f"+{phone_number}"
+
     if _send_via_twilio(phone_number, message):
         return True
 

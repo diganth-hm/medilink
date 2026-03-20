@@ -21,81 +21,86 @@ export default function MedicalIDCard() {
       })
   }
 
-  // Generate QR value (URL to patient's emergency profile)
-  const qrValue = `${window.location.origin}/emergency/${user?.qr_token || 'demo'}`
+  // Try to fetch patient data to get blood group, fallback to demo
+  const bloodGroup = user?.blood_group || 'O+'
+  const patientId = user?.id ? `ML-${user.id}` : 'XXXXXXX'
 
   return (
     <div className="min-h-screen pt-24 pb-12 px-4 flex flex-col items-center">
-      <div className="max-w-md w-full mb-8">
+      <div className="max-w-md w-full mb-8 text-center">
         <h1 className="text-3xl font-bold text-primary mb-2">Digital Medical ID</h1>
-        <p className="text-secondary">Your secure digital identity for medical emergencies. You can download this and keep it as a physical card or on your phone lock screen.</p>
+        <p className="text-secondary text-sm">Your secure digital identity for medical emergencies. Download and keep as your lock screen.</p>
       </div>
 
       {/* ID Card */}
       <div 
         ref={cardRef} 
-        className="w-full max-w-sm aspect-[1.6/1] bg-gradient-to-br from-slate-900 via-slate-800 to-blue-900 rounded-3xl p-6 shadow-2xl border border-white/10 relative overflow-hidden flex flex-col justify-between"
+        className="w-full max-w-[400px] relative overflow-hidden rounded-2xl shadow-2xl p-6 flex flex-col justify-between"
+        style={{ aspectRatio: '1.6/1', backgroundColor: '#0B1120' }}
       >
-        {/* Background Decorative Elements */}
-        <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/20 rounded-full blur-3xl -mr-16 -mt-16" />
-        <div className="absolute bottom-0 left-0 w-32 h-32 bg-violet-500/10 rounded-full blur-3xl -ml-16 -mb-16" />
+        {/* Abstract ECG Line SVG Decoration */}
+        <svg 
+          className="absolute inset-0 w-full h-full opacity-20 pointer-events-none" 
+          viewBox="0 0 400 250" 
+          preserveAspectRatio="none"
+        >
+          <path 
+            d="M 0 125 L 80 125 L 95 90 L 120 180 L 145 70 L 165 140 L 180 125 L 400 125" 
+            fill="none" 
+            stroke="#E5341A" 
+            strokeWidth="3" 
+            strokeLinecap="round" 
+            strokeLinejoin="round" 
+          />
+        </svg>
 
-        <div className="flex justify-between items-start z-10">
+        {/* Top Bar: Logo & Blood Group */}
+        <div className="flex justify-between items-start z-10 relative">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
-              <svg className="w-5 h-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-white/10">
+              <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm14 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
               </svg>
             </div>
-            <span className="font-bold text-primary tracking-tight">MediLink</span>
-          </div>
-          <span className="text-[10px] uppercase tracking-[0.2em] text-blue-400 font-bold">Emergency Card</span>
-        </div>
-
-        <div className="flex gap-6 mt-4 z-10">
-          <div className="p-2 bg-white rounded-xl shadow-lg">
-            <QRCode value={qrValue} size={80} level="H" />
-          </div>
-          <div className="flex-1 flex flex-col justify-center">
-            <h2 className="text-xl font-bold text-primary leading-tight">{user?.name || 'Full Name'}</h2>
-            <p className="text-blue-300 text-xs font-semibold mb-2">Scan for Emergency Info</p>
-            <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-               <div>
-                 <p className="text-[8px] uppercase text-secondary font-bold">Role</p>
-                 <p className="text-xs text-secondary capitalize">{user?.role || 'Patient'}</p>
-               </div>
-               <div>
-                 <p className="text-[8px] uppercase text-secondary font-bold">Blood Type</p>
-                 <p className="text-xs text-primary font-bold">O+ (Demo)</p>
-               </div>
+            <div>
+              <span className="font-bold text-white tracking-tight block leading-none">MediLink</span>
+              <span className="text-[9px] uppercase tracking-[0.2em] text-[#E5341A] font-bold">Emergency Card</span>
             </div>
           </div>
+
+          <div className="bg-[#E5341A] text-white px-3 py-1 rounded-full font-bold text-sm shadow-lg border border-white/20">
+            {bloodGroup}
+          </div>
         </div>
 
-        <div className="pt-4 border-t border-white/5 z-10 flex justify-between items-end">
-           <div>
-             <p className="text-[8px] uppercase text-secondary font-bold">ID Number</p>
-             <p className="text-[10px] text-secondary font-mono tracking-widest uppercase">ML-{user?.id || 'XXXXXXX'}</p>
-           </div>
-           <div className="flex gap-1">
-              <div className="w-6 h-4 bg-red-600 rounded-[2px]" />
-              <div className="w-6 h-4 bg-blue-600 rounded-[2px]" />
-           </div>
+        {/* Bottom Area: User Info & QR Code */}
+        <div className="flex justify-between items-end z-10 relative mt-auto">
+          <div className="flex flex-col">
+            <p className="text-white text-lg font-bold uppercase tracking-wide leading-tight">{user?.name || 'Authorized User'}</p>
+            <p className="text-white/60 text-xs font-mono tracking-widest uppercase mt-1">ID: {patientId}</p>
+            <div className="mt-2 text-[10px] text-white/50 uppercase tracking-widest">
+              Scan for emergency medical profile
+            </div>
+          </div>
+
+          <div className="p-1.5 bg-white rounded-xl shadow-xl flex-shrink-0">
+            <QRCode value={qrValue} size={70} level="H" />
+          </div>
         </div>
       </div>
 
-      <div className="mt-12 flex flex-col gap-4 w-full max-w-sm">
+      <div className="mt-10 w-full max-w-[400px]">
         <button 
           onClick={downloadCard}
-          className="btn-primary py-4 rounded-2xl flex items-center justify-center gap-3 shadow-lg shadow-blue-600/20"
+          className="w-full py-4 bg-[#E5341A] hover:bg-red-600 text-white font-bold rounded-xl transition-colors flex items-center justify-center gap-2"
         >
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
           </svg>
           Download Card
         </button>
-        <p className="text-center text-xs text-secondary italic">
-          This card is protected by end-to-end encryption. Only authorized medical personnel can view the data stored in the QR link.
+        <p className="text-center text-xs text-secondary mt-4">
+          Card verified by MediLink Identity Services
         </p>
       </div>
     </div>
