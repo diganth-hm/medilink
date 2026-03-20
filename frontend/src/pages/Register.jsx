@@ -59,15 +59,15 @@ export default function Register() {
   
   // OTP flow specific
   const [step, setStep] = useState('form') // 'form' | 'otp'
-  const [otp, setOtp] = useState(['', '', '', '', '', ''])
-  const [displayOtp, setDisplayOtp] = useState(['', '', '', '', '', ''])
+  const [boxValues, setBoxValues] = useState(['', '', '', '', '', ''])
+  const [boxMasked, setBoxMasked] = useState([false, false, false, false, false, false])
   const [countdown, setCountdown] = useState(60)
   const [isOtpSuccess, setIsOtpSuccess] = useState(false)
   const [isOtpFailed, setIsOtpFailed] = useState(false)
   const [otpArriving, setOtpArriving] = useState(false)
-  
-  const otpRefs = useRef([])
-  const timers = useRef({})
+
+  const inputRefs = useRef([null, null, null, null, null, null])
+  const maskTimers = useRef([null, null, null, null, null, null])
 
   // Computed variables
   const filteredCountries = useMemo(() => {
@@ -110,13 +110,39 @@ export default function Register() {
     return () => clearTimeout(t)
   }, [step, countdown])
 
-  // Auto-submit OTP when 6 digits are entered
+  // Cleanup all mask timers on unmount (FIX 4)
   useEffect(() => {
-    const otpCode = otp.join('')
-    if (step === 'otp' && otpCode.length === 6 && !loading && !isOtpSuccess) {
-      submitOtp()
+    return () => {
+      maskTimers.current.forEach(timer => {
+        if (timer) clearTimeout(timer)
+      })
     }
-  }, [otp, step, loading, isOtpSuccess])
+  }, [])
+
+  // Auto-focus first OTP box when OTP screen appears (FIX 6)
+  useEffect(() => {
+    if (step === 'otp') {
+      setTimeout(() => {
+        inputRefs.current[0]?.focus()
+      }, 300)
+    }
+  }, [step])
+
+  // Shake and clear on wrong OTP (FIX 7)
+  useEffect(() => {
+    if (isOtpFailed) {
+      setTimeout(() => {
+        setBoxValues(['', '', '', '', '', ''])
+        setBoxMasked([false, false, false, false, false, false])
+        maskTimers.current.forEach(timer => {
+          if (timer) clearTimeout(timer)
+        })
+        maskTimers.current = [null, null, null, null, null, null]
+        setIsOtpFailed(false)
+        inputRefs.current[0]?.focus()
+      }, 600)
+    }
+  }, [isOtpFailed])
 
   // ---- FORM HANDLER ----
   const handleContinue = async (e) => {
@@ -155,14 +181,11 @@ export default function Register() {
         setStep('otp')
         setOtpArriving(true)
         setCountdown(60)
-        setOtp(['', '', '', '', '', ''])
-        setDisplayOtp(['', '', '', '', '', ''])
-        
+        setBoxValues(['', '', '', '', '', ''])
+        setBoxMasked([false, false, false, false, false, false])
+
         // Clear the arriving message after 10 seconds
         setTimeout(() => setOtpArriving(false), 10000)
-
-        // Focus first OTP input dynamically after state flips
-        setTimeout(() => otpRefs.current[0]?.focus(), 300)
       } else {
         throw new Error('Failed to send OTP')
       }
@@ -175,76 +198,102 @@ export default function Register() {
     }
   }
 
-  // ---- OTP MASKING LOGIC ----
-  const handleOtpDigitChange = (val, idx) => {
-    const digit = val.replace(/\D/, '').slice(-1)
-    
-    const nextOtp = [...otp]
-    nextOtp[idx] = digit
-    setOtp(nextOtp)
+  // ---- OTP MASKING LOGIC (FIX 1) ----
+  const handleOtpInput = (index, value) => {
+    if (!/^\d*$/.test(value)) return
 
-    const nextDisplay = [...displayOtp]
-    nextDisplay[idx] = digit
-    setDisplayOtp(nextDisplay)
+    const newValues = [...boxValues]
+    newValues[index] = value.slice(-1)
+    setBoxValues(newValues)
 
-    if (timers.current[idx]) clearTimeout(timers.current[idx])
+    const newMasked = [...boxMasked]
+    newMasked[index] = false
+    setBoxMasked(newMasked)
 
-    if (digit) {
-      timers.current[idx] = setTimeout(() => {
-         setDisplayOtp(prev => {
-           const newD = [...prev]
-           if (newD[idx] !== '' && newD[idx] !== '•') newD[idx] = '•'
-           return newD
-         })
+    if (maskTimers.current[index]) {
+      clearTimeout(maskTimers.current[index])
+    }
+
+    if (value) {
+      maskTimers.current[index] = setTimeout(() => {
+        setBoxMasked(prev => {
+          const updated = [...prev]
+          updated[index] = true
+          return updated
+        })
       }, 3000)
-      if (idx < 5) otpRefs.current[idx + 1]?.focus()
+
+      if (index < 5 && value) {
+        inputRefs.current[index + 1]?.focus()
+      }
+    }
+
+    const allValues = [...newValues]
+    if (allValues.join('').length === 6) {
+      verifyOtp(allValues.join(''))
     }
   }
 
-  const handleOtpKeyDown = (e, idx) => {
-    if (e.key === 'Backspace' && !otp[idx] && idx > 0) {
-      otpRefs.current[idx - 1]?.focus()
-    }
-  }
-
-  const handleOtpFocus = (idx) => {
-    if (timers.current[idx]) clearTimeout(timers.current[idx])
-    setDisplayOtp(prev => {
-       const newD = [...prev]
-       newD[idx] = otp[idx]
-       return newD
-    })
-  }
-
-  const handleOtpBlur = (idx) => {
-    if (otp[idx]) {
-      setDisplayOtp(prev => {
-         const newD = [...prev]
-         newD[idx] = '•'
-         return newD
-      })
+  const handleOtpKeyDown = (index, e) => {
+    if (e.key === 'Backspace') {
+      if (boxValues[index]) {
+        const newValues = [...boxValues]
+        newValues[index] = ''
+        setBoxValues(newValues)
+        const newMasked = [...boxMasked]
+        newMasked[index] = false
+        setBoxMasked(newMasked)
+        if (maskTimers.current[index]) {
+          clearTimeout(maskTimers.current[index])
+        }
+      } else if (index > 0) {
+        inputRefs.current[index - 1]?.focus()
+      }
     }
   }
 
   const handleOtpPaste = (e) => {
-    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6)
-    if (pasted.length === 6) {
-      setOtp(pasted.split(''))
-      setDisplayOtp(pasted.split('').map(() => '•')) // mask instantly on paste
-      otpRefs.current[5]?.focus()
-    }
     e.preventDefault()
+    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6)
+    if (!pasted) return
+
+    const newValues = [...boxValues]
+    const newMasked = [...boxMasked]
+
+    pasted.split('').forEach((digit, i) => {
+      newValues[i] = digit
+      newMasked[i] = false
+
+      if (maskTimers.current[i]) clearTimeout(maskTimers.current[i])
+
+      maskTimers.current[i] = setTimeout(() => {
+        setBoxMasked(prev => {
+          const updated = [...prev]
+          updated[i] = true
+          return updated
+        })
+      }, 3000)
+    })
+
+    setBoxValues(newValues)
+    setBoxMasked(newMasked)
+
+    const focusIndex = Math.min(pasted.length, 5)
+    inputRefs.current[focusIndex]?.focus()
+
+    if (pasted.length === 6) {
+      verifyOtp(pasted)
+    }
   }
 
-  const submitOtp = async () => {
-    const otpCode = otp.join('')
+  // Verify OTP — always uses real boxValues, never display values (FIX 3)
+  const verifyOtp = async (otpCode) => {
     if (otpCode.length !== 6) return
-    
+    if (loading || isOtpSuccess) return
+
     setLoading(true)
 
     try {
-      // Need to register with one verified identifier. 
-      // Based on rules, we can use the main identifier (email preference, fallback phone)
       const primaryIdentifier = email.trim() || fullPhone
 
       // 1. Verify OTP
@@ -258,12 +307,10 @@ export default function Register() {
         password: password,
         role: selectedRole
       }
-      // If we allowed mobile number registration in schema we'd add it here, but per original schema only email goes to backend payload usually, 
-      // For this spec, we just attach email if it exists
-      if (!registerPayload.email && fullPhone) registerPayload.email = `${phone}@phoneuser.com` // Hack due to old generic backend. 
+      if (!registerPayload.email && fullPhone) registerPayload.email = `${phone}@phoneuser.com`
 
       const res = await axios.post(`${API_URL}/auth/register`, registerPayload)
-      
+
       setIsOtpSuccess(true)
       setTimeout(() => {
         toast.success('🎉 Welcome to MediLink!')
@@ -274,15 +321,16 @@ export default function Register() {
     } catch (err) {
       setIsOtpFailed(true)
       toast.error(err.response?.data?.detail || 'Incorrect OTP. Please try again.')
-      setTimeout(() => {
-        setOtp(['', '', '', '', '', ''])
-        setDisplayOtp(['', '', '', '', '', ''])
-        setIsOtpFailed(false)
-        otpRefs.current[0]?.focus()
-      }, 500)
+      // Clearing is handled by the isOtpFailed useEffect (FIX 7)
     } finally {
       setLoading(false)
     }
+  }
+
+  // Kept for the manual "Verify & Create Account" button
+  const submitOtp = () => {
+    const enteredOtp = boxValues.join('')
+    verifyOtp(enteredOtp)
   }
 
   const handleResend = async () => {
@@ -578,7 +626,11 @@ export default function Register() {
                </div>
              )}
 
-             <div className={`flex justify-center gap-2.5 mb-8 relative ${isOtpFailed ? 'animate-otpShake' : ''}`} onPaste={handleOtpPaste}>
+             {/* OTP Boxes — FIX 2: overlay architecture for secure masking */}
+             <div
+               className={`mb-8 relative ${isOtpFailed ? 'animate-otpShake' : ''}`}
+               style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}
+             >
                {isOtpSuccess && (
                  <div className="absolute inset-0 flex items-center justify-center z-10 animate-fade-in pointer-events-none">
                    <div className="w-16 h-16 bg-[#1D9E75] rounded-full flex items-center justify-center shadow-lg">
@@ -588,35 +640,82 @@ export default function Register() {
                    </div>
                  </div>
                )}
-               {otp.map((_, i) => (
-                  <input
-                    key={i}
-                    ref={el => otpRefs.current[i] = el}
-                    type="text"
-                    inputMode="numeric"
-                    maxLength={1}
-                    value={displayOtp[i]}
-                    onChange={e => handleOtpDigitChange(e.target.value, i)}
-                    onKeyDown={e => handleOtpKeyDown(e, i)}
-                    onFocus={() => handleOtpFocus(i)}
-                    onBlur={() => handleOtpBlur(i)}
-                    className={`w-[48px] h-[56px] text-center text-[22px] font-bold rounded-[12px] border-[1.5px] bg-[var(--bg-card)] focus:outline-none transition-all ${
-                      isOtpSuccess 
-                        ? 'border-[#1D9E75] bg-[#1D9E75]/10 text-[#1D9E75]' 
-                        : isOtpFailed
-                        ? 'border-[#E5341A] text-[#E5341A]'
-                        : 'border-[var(--border)] text-[var(--text-primary)] focus:border-[#E5341A]'
-                    }`}
-                    style={{
-                      boxShadow: !isOtpSuccess && !isOtpFailed && document.activeElement === otpRefs.current[i] ? '0 0 0 3px rgba(229,52,26,0.15)' : 'none'
-                    }}
-                  />
+               {[0, 1, 2, 3, 4, 5].map((index) => (
+                 <div
+                   key={index}
+                   style={{ position: 'relative', width: '48px', height: '56px' }}
+                 >
+                   {/* Real input — invisible, handles all keyboard events (FIX 2 & 5) */}
+                   <input
+                     ref={el => inputRefs.current[index] = el}
+                     type="text"
+                     inputMode="numeric"
+                     maxLength={1}
+                     value={boxValues[index]}
+                     onChange={e => handleOtpInput(index, e.target.value)}
+                     onKeyDown={e => handleOtpKeyDown(index, e)}
+                     onPaste={index === 0 ? handleOtpPaste : undefined}
+                     autoComplete="one-time-code"
+                     autoCorrect="off"
+                     autoCapitalize="off"
+                     spellCheck="false"
+                     data-lpignore="true"
+                     style={{
+                       position: 'absolute',
+                       inset: 0,
+                       width: '100%',
+                       height: '100%',
+                       opacity: 0,
+                       cursor: 'text',
+                       zIndex: 2,
+                       fontSize: '22px',
+                     }}
+                   />
+                   {/* Visual display div — shows digit for 3s then bullet (FIX 2) */}
+                   <div
+                     style={{
+                       position: 'absolute',
+                       inset: 0,
+                       display: 'flex',
+                       alignItems: 'center',
+                       justifyContent: 'center',
+                       fontSize: boxMasked[index] ? '28px' : '22px',
+                       fontWeight: 700,
+                       color: isOtpSuccess ? '#1D9E75' : isOtpFailed ? '#E5341A' : 'var(--text-primary)',
+                       background: isOtpSuccess
+                         ? 'rgba(29,158,117,0.1)'
+                         : isOtpFailed
+                         ? 'rgba(229,52,26,0.1)'
+                         : 'var(--bg-card)',
+                       border: `1.5px solid ${
+                         boxValues[index]
+                           ? isOtpSuccess
+                             ? '#1D9E75'
+                             : isOtpFailed
+                             ? '#E5341A'
+                             : '#E5341A'
+                           : 'var(--border)'
+                       }`,
+                       borderRadius: '12px',
+                       transition: 'all 0.2s ease',
+                       userSelect: 'none',
+                       pointerEvents: 'none',
+                       zIndex: 1,
+                     }}
+                   >
+                     {boxValues[index]
+                       ? boxMasked[index]
+                         ? '•'
+                         : boxValues[index]
+                       : ''}
+                   </div>
+                 </div>
                ))}
              </div>
 
              <button
                 onClick={submitOtp}
-                disabled={loading || otp.join('').length !== 6}
+                disabled={loading || boxValues.join('').length !== 6}
                 className="w-full py-4 bg-[#E5341A] text-white font-bold rounded-[12px] transition-colors hover:bg-red-600 mb-6 disabled:opacity-50 disabled:cursor-not-allowed"
              >
                 {loading ? 'Verifying...' : 'Verify & Create Account'}
