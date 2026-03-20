@@ -305,11 +305,11 @@ export default function Register() {
       const selectedRole = ROLES[currentRoleIndex].value
       const registerPayload = {
         name: name.trim(),
-        email: email.trim() || undefined,
+        email: email.trim() || `${phone}@phoneuser.com`,
+        mobile_number: fullPhone || null,
         password: password,
         role: selectedRole
       }
-      if (!registerPayload.email && fullPhone) registerPayload.email = `${phone}@phoneuser.com`
 
       const res = await axios.post(`${API_URL}/auth/register`, registerPayload)
 
@@ -615,9 +615,14 @@ export default function Register() {
         <div className={`transition-all duration-500 transform absolute top-0 left-0 right-0 ${step === 'otp' ? 'translate-y-0 opacity-100 scale-100 pointer-events-auto' : 'translate-y-32 opacity-0 scale-95 pointer-events-none'}`}>
           <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-8 shadow-2xl text-center">
              <h2 className="text-[20px] font-bold text-[var(--text-primary)] mb-2">Enter Verification Code</h2>
-             <p className="text-[13px] text-[var(--text-secondary)] mb-4">
+             <p className="text-[13px] text-[var(--text-secondary)] mb-1">
                {maskEmailPhoneText()}
              </p>
+             {!email && phone && (
+               <p className="text-[11px] text-[var(--text-secondary)] mb-4 italic">
+                 Note: If you don't receive an SMS, try registering with your email address instead.
+               </p>
+             )}
 
              {otpArriving && (
                <div className="flex items-center justify-center gap-2 mb-6 animate-pulse">

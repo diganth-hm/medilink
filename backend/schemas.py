@@ -6,7 +6,8 @@ from datetime import datetime
 # Auth schemas
 class UserRegister(BaseModel):
     name: str
-    email: EmailStr
+    email: Optional[EmailStr] = None
+    mobile_number: Optional[str] = None
     password: str
     role: str = "patient"
 

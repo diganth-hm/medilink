@@ -6,7 +6,7 @@ from models import User, OTPToken
 from schemas import UserRegister, UserLogin, Token, UserOut, OTPRequest, OTPVerify, SendOTPRequest
 from auth import hash_password, verify_password, create_access_token, get_current_user
 from services.otp_service import generate_otp, hash_otp, verify_otp, get_otp_remaining_seconds
-from services.notification_service import send_email, send_sms, send_otp_email
+from services.notification_service import send_email, send_otp_sms, send_otp_email
 from datetime import datetime, timedelta
 from pydantic import BaseModel, EmailStr
 from typing import Optional
@@ -29,35 +29,65 @@ class OTPLoginRequest(BaseModel):
 OTP_EXPIRY_MINUTES = int(os.getenv("OTP_EXPIRY_MINUTES", "10"))
 
 
-@router.post("/register", response_model=Token, status_code=status.HTTP_201_CREATED)
+from sqlalchemy import or_
+
+@router.post("/register", response_model=Token)
 def register(user_data: UserRegister, db: Session = Depends(get_db)):
-    existing = db.query(User).filter(User.email == user_data.email).first()
-    if existing:
-        raise HTTPException(status_code=400, detail="Email already registered")
+    try:
+        # 1. Uniqueness check for email and phone
+        filters = []
+        if user_data.email:
+            filters.append(User.email == user_data.email)
+        if user_data.mobile_number:
+            filters.append(User.mobile_number == user_data.mobile_number)
+        
+        if filters:
+            existing_user = db.query(User).filter(or_(*filters)).first()
+            if existing_user:
+                raise HTTPException(
+                    status_code=400,
+                    detail="An account with this email or phone already exists. Please login instead."
+                )
 
-    valid_roles = ["patient", "doctor", "hospital", "responder"]
-    if user_data.role not in valid_roles:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Invalid role. Must be one of: {valid_roles}"
+        # 2. Validation for roles
+        valid_roles = ["patient", "doctor", "hospital", "responder"]
+        if user_data.role not in valid_roles:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid role. Must be one of: {valid_roles}"
+            )
+
+        # 3. Create user
+        new_user = User(
+            name=user_data.name,
+            email=user_data.email,
+            mobile_number=user_data.mobile_number,
+            password_hash=hash_password(user_data.password),
+            role=user_data.role,
         )
-
-    new_user = User(
-        name=user_data.name,
-        email=user_data.email,
-        password_hash=hash_password(user_data.password),
-        role=user_data.role,
-    )
-    db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
-    logger.info("[AUTH] New user registered: %s (role=%s)", user_data.email, user_data.role)
-    token = create_access_token(data={"sub": str(new_user.id)})
-    return Token(
-        access_token=token,
-        token_type="bearer",
-        user=UserOut.model_validate(new_user)
-    )
+        db.add(new_user)
+        db.commit()
+        db.refresh(new_user)
+        
+        logger.info("[AUTH] New user registered: %s (role=%s)", user_data.email or user_data.mobile_number, user_data.role)
+        
+        # 4. Return token
+        token = create_access_token(data={"sub": str(new_user.id)})
+        return Token(
+            access_token=token,
+            token_type="bearer",
+            user=UserOut.model_validate(new_user)
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[AUTH] Registration failed: {str(e)}")
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail="Registration failed. Please try again."
+        )
 
 
 @router.post("/login")
@@ -126,8 +156,7 @@ async def send_otp_route(request: SendOTPRequest, background_tasks: BackgroundTa
         logger.info("[AUTH] Queued email OTP task for %s", request.email)
     
     if request.phone:
-        otp_message = f"[MediLink] Your verification OTP is: {otp_code}\nThis OTP expires in {expiry_min} minutes. Do not share."
-        background_tasks.add_task(send_sms, request.phone, otp_message)
+        background_tasks.add_task(send_otp_sms, request.phone, otp_code)
         logger.info("[AUTH] Queued SMS OTP task for %s", request.phone)
 
     if os.getenv("ENVIRONMENT") != "production":
@@ -178,8 +207,7 @@ async def login_send_otp_route(request: OTPLoginRequest, background_tasks: Backg
     if request.email:
         background_tasks.add_task(send_otp_email, request.email, otp_code, user.name)
     else:
-        otp_message = f"[MediLink] Your verification OTP is: {otp_code}\nThis OTP expires in {expiry_min} minutes. Do not share."
-        background_tasks.add_task(send_sms, request.phone, otp_message)
+        background_tasks.add_task(send_otp_sms, request.phone, otp_code)
 
     if os.getenv("ENVIRONMENT") != "production":
         print(f"\n[DEV MODE] DEV OTP for {identifier}: {otp_code}\n")
