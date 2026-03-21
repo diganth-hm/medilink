@@ -14,6 +14,7 @@ class User(Base):
     role = Column(String(20), default="patient")  # patient | doctor | hospital | responder
     mobile_number = Column(String(20), unique=True, index=True, nullable=True)
     biometric_template = Column(Text, nullable=True)
+    medilink_id = Column(String(20), unique=True, nullable=True, index=True)
     is_verified = Column(Boolean, default=False)  # True for verified doctors
     created_at = Column(DateTime, default=datetime.utcnow)
 

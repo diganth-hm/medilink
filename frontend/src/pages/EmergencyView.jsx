@@ -84,6 +84,12 @@ export default function EmergencyView() {
             <div className="w-3 h-3 bg-red-400 rounded-full animate-pulse" />
           </div>
           <h1 className="text-4xl font-black text-primary mb-1">{data.patient_name}</h1>
+          {data.medilink_id && (
+            <div className="mb-2">
+              <span className="text-xs uppercase tracking-widest text-red-300 font-bold opacity-80">MediLink ID</span>
+              <p className="text-xl font-mono font-semibold text-white tracking-widest">{data.medilink_id}</p>
+            </div>
+          )}
           {data.date_of_birth && (
             <p className="text-secondary text-sm">
               DOB: {data.date_of_birth} · Age: {new Date().getFullYear() - parseInt(data.date_of_birth?.split('-')[0])}

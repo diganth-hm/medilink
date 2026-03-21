@@ -6,6 +6,8 @@ from contextlib import asynccontextmanager
 import os
 import sys
 import logging
+import secrets
+import string
 from dotenv import load_dotenv
 
 # Ensure the backend directory is in sys.path
@@ -34,6 +36,14 @@ logging.basicConfig(
 )
 logger = logging.getLogger("medilink.main")
 
+# ── MediLink ID Generator ─────────────────────────────────────────────────────
+_ML_ALPHABET = string.ascii_uppercase + string.digits
+
+def generate_medilink_id() -> str:
+    """Return a unique patient identifier like 'ML-A3F9K2'."""
+    suffix = ''.join(secrets.choice(_ML_ALPHABET) for _ in range(6))
+    return f"ML-{suffix}"
+
 # Database initialization moved to lifespan for safety
 
 def run_migrations():
@@ -55,14 +65,16 @@ def run_migrations():
         except Exception:
             conn.rollback()
             
-        # Widen otp_code column (if needed) -- Note: SQLite VARCHAR length is not enforced, 
+        # Widen otp_code column (if needed) -- Note: SQLite VARCHAR length is not enforced,
         # so MODIFY COLUMN is skipable. MySQL syntax 'MODIFY COLUMN' is removed.
-        pass
+
+        # Add medilink_id column to users table
         try:
-            # SQLite-compatible: recreate isn't needed if column is already wide
-            pass
+            conn.execute(text("ALTER TABLE users ADD COLUMN medilink_id VARCHAR(20)"))
+            conn.commit()
+            print("Successfully added medilink_id column.")
         except Exception:
-            pass
+            conn.rollback()  # Column likely already exists
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

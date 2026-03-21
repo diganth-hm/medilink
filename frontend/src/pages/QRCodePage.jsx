@@ -73,8 +73,10 @@ export default function QRCodePage() {
               <img src={qrImageUrl} alt="Emergency QR Code" className="w-64 h-64 mx-auto" />
             </div>
 
-            <p className="text-sm text-secondary mb-1">Token: <span className="font-mono text-blue-400">{qrInfo.qr_token?.slice(0, 18)}...</span></p>
-            <p className="text-xs text-secondary mb-6">Emergency URL: {qrInfo.emergency_url}</p>
+            <div className="mb-4">
+              <span className="text-xs uppercase tracking-widest text-secondary font-bold">MediLink ID</span>
+              <p className="text-lg font-mono font-semibold text-primary">{qrInfo.medilink_id || 'Not generated'}</p>
+            </div>
 
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <button

@@ -70,6 +70,7 @@ def get_emergency_data(qr_token: str, db: Session = Depends(get_db)):
 
     return EmergencyDataOut(
         patient_name=user.name,
+        medilink_id=user.medilink_id,
         blood_group=profile.blood_group,
         date_of_birth=profile.date_of_birth,
         allergies=profile.allergies,

@@ -26,6 +26,7 @@ import BiometricPortal from './pages/BiometricPortal'
 import BiometricEnroll from './pages/BiometricEnroll'
 import DoctorVerification from './pages/DoctorVerification'
 import PublicFundraising from './pages/PublicFundraising'
+import Settings from './pages/Settings'
 
 import { useEffect } from 'react'
 import { API_URL } from './config'
@@ -127,7 +128,7 @@ export default function App() {
           <Route path="/dashboard/health-records" element={<ProtectedRoute><MedicalRecords /></ProtectedRoute>} />
           <Route path="/dashboard/appointments" element={<ProtectedRoute><PlaceholderPage title="Appointments" /></ProtectedRoute>} />
           <Route path="/dashboard/prescriptions" element={<ProtectedRoute><PlaceholderPage title="Prescriptions" /></ProtectedRoute>} />
-          <Route path="/dashboard/settings" element={<ProtectedRoute><PlaceholderPage title="Settings" /></ProtectedRoute>} />
+          <Route path="/dashboard/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
           
           {/* Other nested protected routes */}
           <Route path="/dashboard/chatbot" element={<ProtectedRoute><Chatbot /></ProtectedRoute>} />

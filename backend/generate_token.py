@@ -1,4 +1,4 @@
-"""
+r"""
 Run this script ONCE locally to generate OAuth2 tokens for Gmail API.
 Prerequisites:
   1. Download credentials.json from Google Cloud Console and place it here.

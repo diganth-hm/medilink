@@ -42,6 +42,7 @@ class UserOut(BaseModel):
     email: str
     role: str
     mobile_number: Optional[str] = None
+    medilink_id: Optional[str] = None
     created_at: datetime
 
     class Config:
@@ -84,6 +85,7 @@ class MedicalProfileUpdate(MedicalProfileCreate):
 class MedicalProfileOut(MedicalProfileCreate):
     id: int
     user_id: int
+    medilink_id: Optional[str] = None
     updated_at: Optional[datetime] = None
 
     class Config:
@@ -104,6 +106,7 @@ class QRCodeOut(BaseModel):
 # Emergency data schema (public - minimal fields)
 class EmergencyDataOut(BaseModel):
     patient_name: str
+    medilink_id: Optional[str] = None
     blood_group: Optional[str]
     date_of_birth: Optional[str]
     allergies: Optional[str]

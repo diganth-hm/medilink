@@ -46,7 +46,7 @@ def get_my_qr(user_id: int = Depends(get_current_user), db: Session = Depends(ge
     img = qr_img.make_image(fill_color="#1e293b", back_color="white")
 
     buf = io.BytesIO()
-    img.save(buf, format="PNG")
+    img.save(buf)
     buf.seek(0)
     return StreamingResponse(buf, media_type="image/png")
 
@@ -56,8 +56,10 @@ def get_my_qr_info(user_id: int = Depends(get_current_user), db: Session = Depen
     qr_record = db.query(QRCode).filter(QRCode.user_id == user_id).order_by(QRCode.created_at.desc()).first()
     if not qr_record:
         raise HTTPException(status_code=404, detail="No QR code found.")
+    user = db.query(User).filter(User.id == user_id).first()
     return {
         "qr_token": qr_record.qr_token,
+        "medilink_id": user.medilink_id if user else None,
         "emergency_url": f"{BASE_URL}/emergency/{qr_record.qr_token}",
         "created_at": qr_record.created_at
     }

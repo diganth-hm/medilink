@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useSearchParams, useNavigate } from 'react-router-dom'
 import axios from 'axios'
 import toast from 'react-hot-toast'
 import ChatWidget from '../components/ChatWidget'
@@ -57,6 +58,10 @@ const CheckField = ({ label, field, icon, checked, onSet }) => (
 // ──────────────────────────────────────────────────────────────────────────────
 
 export default function MedicalProfile() {
+  const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
+  const isEditMode = searchParams.get('edit') === 'true'
+
   const [form, setForm] = useState(defaultForm)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -103,6 +108,15 @@ export default function MedicalProfile() {
     )
   }
 
+  const isEditable = isNew || isEditMode
+
+  const handleCopyId = () => {
+    if (form.medilink_id) {
+      navigator.clipboard.writeText(form.medilink_id)
+      toast.success('MediLink ID copied to clipboard!')
+    }
+  }
+
 
   return (
     <div className="min-h-screen pt-24 pb-10 px-4 max-w-3xl mx-auto">
@@ -111,7 +125,49 @@ export default function MedicalProfile() {
         <p className="text-secondary">This information will be shown to responders in an emergency</p>
       </div>
 
+      {/* MediLink ID Card */}
+      {form.medilink_id && (
+        <div className="bg-slate-900 rounded-2xl p-6 mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between border border-slate-700 shadow-xl gap-4">
+          <div>
+            <div className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">MediLink ID</div>
+            <div className="flex items-center gap-3">
+              <span className="text-2xl font-mono font-bold tracking-widest text-white">
+                {form.medilink_id}
+              </span>
+              <button 
+                type="button" 
+                onClick={handleCopyId}
+                className="p-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-300 transition-colors"
+                title="Copy to clipboard"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+              </button>
+            </div>
+          </div>
+          <button 
+            type="button"
+            onClick={() => navigate('/dashboard/biometric-portal')}
+            className="flex items-center gap-2 border border-blue-500 text-blue-400 hover:bg-blue-500/10 px-5 py-2.5 rounded-xl font-bold transition-all whitespace-nowrap"
+          >
+            <span className="text-xl">🫆</span> Enroll Fingerprint
+          </button>
+        </div>
+      )}
+
+      {/* Read-Only Banner */}
+      {!isEditable && (
+        <div className="bg-blue-50 text-blue-700 rounded-lg p-4 mb-6 text-sm flex items-start gap-3 border border-blue-200">
+          <svg className="w-5 h-5 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+          </svg>
+          <p>Your profile is view-only. To make changes, go to Settings → Edit Profile.</p>
+        </div>
+      )}
+
       <form onSubmit={handleSave}>
+        <fieldset disabled={!isEditable} className={!isEditable ? "opacity-90 grayscale-[10%]" : ""}>
         {/* Section 1: Basic Info */}
         <Section title="Basic Info" icon="👤">
           <div className="grid grid-cols-2 gap-4">
@@ -186,22 +242,26 @@ export default function MedicalProfile() {
           </Section>
         )}
 
+        </fieldset>
+
         {/* Save */}
-        <div className="sticky bottom-4 mt-4">
-          <button
-            id="save-profile"
-            type="submit"
-            disabled={saving}
-            className="btn-primary w-full py-4 text-base flex items-center justify-center gap-2 disabled:opacity-50 shadow-xl"
-          >
-            {saving ? (
-              <>
-                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                Saving...
-              </>
-            ) : '💾 Save Medical Profile'}
-          </button>
-        </div>
+        {isEditable && (
+          <div className="sticky bottom-4 mt-4 z-10">
+            <button
+              id="save-profile"
+              type="submit"
+              disabled={saving}
+              className="btn-primary w-full py-4 text-base flex items-center justify-center gap-2 disabled:opacity-50 shadow-xl"
+            >
+              {saving ? (
+                <>
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  Saving...
+                </>
+              ) : '💾 Save Medical Profile'}
+            </button>
+          </div>
+        )}
       </form>
 
       <ChatWidget />

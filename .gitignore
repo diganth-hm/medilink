@@ -8,3 +8,12 @@ __pycache__/
 backend/medilink.db
 backend/credentials.json
 backend/gmail_token.json
+backend/medilink_venv/
+backend/bootstrap_*.py
+.gemini/
+.agent/
+.agents/
+*.log
+node_modules/
+frontend/dist/
+frontend/.env*
