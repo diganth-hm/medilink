@@ -4,6 +4,7 @@ import { v4 as uuidv4 } from 'uuid'
 import toast from 'react-hot-toast'
 import { API_URL } from '../config'
 import { useUserLocation } from '../context/LocationContext'
+import SafeText from '../components/SafeText'
 
 const SUGGESTIONS = [
   { label: 'Medicine Order', text: 'I need Paracetamol 650mg, 10 tablets', icon: '💊' },
@@ -66,11 +67,10 @@ function MessageBubble({ msg, onConfirm, loading, orderState }) {
           ? 'bg-blue-600 text-primary rounded-tr-sm max-w-lg whitespace-pre-wrap'
           : 'bg-slate-800 text-primary rounded-tl-sm max-w-lg'
       }`}>
-        <span dangerouslySetInnerHTML={{
-          __html: msg.content
-            .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-            .replace(/\n/g, '<br/>')
-        }} />
+        <SafeText
+          text={msg.content}
+          className="text-primary"
+        />
 
         {msg.pharmacy_links && msg.pharmacy_links.length > 0 && (
           <div className="mt-3 space-y-2">

@@ -9,17 +9,59 @@ const AuthContext = createContext(null)
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
-    const savedUser = localStorage.getItem('medilink_user')
+    const savedUser = localStorage.getItem('medilink_user') || sessionStorage.getItem('medilink_user')
     return savedUser ? JSON.parse(savedUser) : null
   })
+  
   const [token, setToken] = useState(() => {
-    const savedToken = localStorage.getItem('medilink_token') || null
-    // Set axios header immediately so API calls on page reload have the token
+    const savedToken = localStorage.getItem('access_token') || sessionStorage.getItem('access_token')
     if (savedToken) {
       axios.defaults.headers.common['Authorization'] = `Bearer ${savedToken}`
     }
     return savedToken
   })
+
+  // Set base URL once so all relative-path axios calls hit the correct backend
+  useEffect(() => {
+    axios.defaults.baseURL = API_URL
+    
+    // Axios response interceptor for refresh token logic
+    const interceptor = axios.interceptors.response.use(
+      (response) => response,
+      async (error) => {
+        const originalRequest = error.config;
+        if (error.response?.status === 401 && !originalRequest._retry) {
+          originalRequest._retry = true;
+          const storage = localStorage.getItem('refresh_token') ? localStorage : sessionStorage;
+          const refreshToken = storage.getItem('refresh_token');
+          
+          if (refreshToken) {
+            try {
+              const res = await axios.post('/auth/refresh', { refresh_token: refreshToken });
+              const { access_token, refresh_token } = res.data;
+              
+              storage.setItem('access_token', access_token);
+              storage.setItem('refresh_token', refresh_token);
+              setToken(access_token);
+              
+              axios.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
+              originalRequest.headers['Authorization'] = `Bearer ${access_token}`;
+              return axios(originalRequest);
+            } catch (refreshErr) {
+              logout();
+              return Promise.reject(refreshErr);
+            }
+          } else {
+            logout();
+          }
+        }
+        return Promise.reject(error);
+      }
+    );
+
+    return () => axios.interceptors.response.eject(interceptor);
+  }, []);
+
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
@@ -28,19 +70,28 @@ export function AuthProvider({ children }) {
     }
   }, [token])
 
-  const login = (tokenData, userData) => {
-    setToken(tokenData)
+  const login = (tokenData, userData, rememberMe = false) => {
+    const storage = rememberMe ? localStorage : sessionStorage;
+    
+    setToken(tokenData.access_token)
     setUser(userData)
-    localStorage.setItem('medilink_token', tokenData)
-    localStorage.setItem('medilink_user', JSON.stringify(userData))
-    axios.defaults.headers.common['Authorization'] = `Bearer ${tokenData}`
+    
+    storage.setItem('access_token', tokenData.access_token)
+    storage.setItem('refresh_token', tokenData.refresh_token)
+    storage.setItem('medilink_user', JSON.stringify(userData))
+    
+    axios.defaults.headers.common['Authorization'] = `Bearer ${tokenData.access_token}`
   }
 
   const logout = () => {
     setToken(null)
     setUser(null)
-    localStorage.removeItem('medilink_token')
+    localStorage.removeItem('access_token')
+    localStorage.removeItem('refresh_token')
     localStorage.removeItem('medilink_user')
+    sessionStorage.removeItem('access_token')
+    sessionStorage.removeItem('refresh_token')
+    sessionStorage.removeItem('medilink_user')
     delete axios.defaults.headers.common['Authorization']
   }
 

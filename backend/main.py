@@ -4,10 +4,19 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from contextlib import asynccontextmanager
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+from starlette.middleware.base import BaseHTTPMiddleware
+import re
+import html
 import os
 import sys
 import logging
 import secrets
+from slowapi.errors import RateLimitExceeded
+from slowapi import _rate_limit_exceeded_handler
+from limiter import limiter
 import string
 from dotenv import load_dotenv
 
@@ -20,7 +29,7 @@ load_dotenv()
 
 from database import engine, Base, get_db, SessionLocal
 import models
-from routers import auth, patients, qrcode_routes, emergency, chatbot, records, doctor, fundraising
+from routers import auth, patients, qrcode_routes, emergency, chatbot, records, doctor, fundraising, biometric
 import schemas
 from auth import hash_password, verify_password, get_current_user, create_access_token
 from schemas import BiometricEnrollment, BiometricLogin, Token, UserOut, HealthRecordOut, AppointmentCreate, AppointmentUpdate, AppointmentOut, PrescriptionCreate, PrescriptionUpdate, PrescriptionOut, PasswordUpdate, UserPreferences, UserDelete, AccessLogOut
@@ -30,6 +39,9 @@ from fastapi.responses import JSONResponse
 from fastapi import Request
 from sqlalchemy import inspect, text
 from groq import Groq
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 
 # Configure structured logging
 logging.basicConfig(
@@ -46,6 +58,30 @@ def generate_medilink_id() -> str:
     """Return a unique patient identifier like 'ML-A3F9K2'."""
     suffix = ''.join(secrets.choice(_ML_ALPHABET) for _ in range(6))
     return f"ML-{suffix}"
+
+
+def send_email(to_email: str, subject: str, html_body: str):
+    msg = MIMEMultipart('alternative')
+    msg['Subject'] = subject
+    msg['From'] = os.getenv('MAIL_FROM', 'medilinkorg68@gmail.com')
+    msg['To'] = to_email
+    msg.attach(MIMEText(html_body, 'html'))
+    try:
+        # SMTP_SSL for port 465
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
+            server.login(
+                os.getenv('MAIL_USERNAME', 'medilinkorg68@gmail.com'),
+                os.getenv('MAIL_PASSWORD')
+            )
+            server.sendmail(
+                os.getenv('MAIL_FROM', 'medilinkorg68@gmail.com'),
+                to_email,
+                msg.as_string()
+            )
+        return True
+    except Exception as e:
+        print(f"Email error: {e}")
+        return False
 
 # Database initialization moved to lifespan for safety
 
@@ -111,12 +147,45 @@ async def lifespan(app: FastAPI):
         logger.error(f"Startup error: {e}")
     yield
 
+
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Permissions-Policy"] = "geolocation=(self), camera=(self)"
+        response.headers["Cache-Control"] = "no-store"
+        # Only add HSTS in production (not localhost)
+        if "localhost" not in str(request.url):
+            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        return response
+
+
+def sanitize_string(value: str) -> str:
+    if not value or not isinstance(value, str):
+        return value
+    # Remove HTML tags
+    value = re.sub(r'<[^>]+>', '', value)
+    # Escape HTML entities
+    value = html.escape(value)
+    # Remove null bytes
+    value = value.replace('\x00', '')
+    # Limit length
+    return value[:500]
+
+
 app = FastAPI(
     lifespan=lifespan,
     title="MediLink API",
     description="Emergency Medical Record Access System",
     version="1.0.0"
 )
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(SecurityHeadersMiddleware)
 
 # Explicit CORS configuration for production and local development
 app.add_middleware(
@@ -148,6 +217,7 @@ app.include_router(chatbot.router, prefix="/chatbot", tags=["Chatbot"])
 app.include_router(records.router, prefix="/records", tags=["Medical Records"])
 app.include_router(doctor.router, prefix="/doctor", tags=["Doctor"])
 app.include_router(fundraising.router, prefix="/fundraising", tags=["Fundraising"])
+app.include_router(biometric.router, prefix="/biometric", tags=["Biometric"])
 
 # ── Emergency Contacts Manager ────────────────────────────────────────────────
 @app.get("/emergency-contacts", tags=["Emergency"])

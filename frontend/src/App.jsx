@@ -7,6 +7,7 @@ import Footer from './components/Footer'
 import SplashScreen from './components/SplashScreen'
 import AnimatedBackground from './components/AnimatedBackground'
 import ProtectedRoute from './components/ProtectedRoute'
+import SessionTimeout from './components/SessionTimeout'
 import Home from './pages/Home'
 import Login from './pages/Login'
 import Register from './pages/Register'
@@ -81,6 +82,9 @@ const NotFound = () => (
 )
 
 export default function App() {
+  const [showInitialSplash, setShowInitialSplash] = useState(true);
+  const isDark = document.documentElement.classList.contains('dark');
+
   useEffect(() => {
     // Keep Render server from sleeping
     const keepAlive = setInterval(() => {
@@ -94,8 +98,9 @@ export default function App() {
     <AuthProvider>
       <LocationProvider>
         <BrowserRouter>
-        <AnimatedBackground />
-        <SplashScreen />
+        <AnimatedBackground isDark={isDark} />
+        {showInitialSplash && <SplashScreen onComplete={() => setShowInitialSplash(false)} />}
+        <SessionTimeout />
         <Navbar />
         <Toaster
           position="top-right"

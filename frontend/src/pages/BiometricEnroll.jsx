@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { API_URL } from '../config'
+import { authFetch } from '../utils/authFetch'
 import { useAuth } from '../context/AuthContext'
 import FingerprintScannerOverlay from '../components/FingerprintScannerOverlay'
 
@@ -23,9 +24,8 @@ export default function BiometricEnroll() {
     e.preventDefault()
     setLoading(true)
     try {
-      const res = await fetch(`${API_URL}/patient/verify`, {
+      const res = await authFetch(`${API_URL}/patient/verify`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ patient_identifier: identifier, date_of_birth: dob })
       })
 
@@ -89,15 +89,8 @@ export default function BiometricEnroll() {
       setScannerState('processing')
       const template = btoa(String.fromCharCode.apply(null, new Uint8Array(credential.rawId)));
       
-      const enrollRes = await fetch(`${API_URL}/auth/biometric/enroll`, {
+      const enrollRes = await authFetch(`${API_URL}/auth/biometric/enroll`, {
         method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          // We might not have a token if user is not logged in during enrollment
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-        },
-        // We pass patientId to link it since they just verified it,
-        // although in reality, the endpoint needs to create a token for them or update securely
         body: JSON.stringify({ biometric_template: template, patient_id: patientData.patientId }),
       })
 

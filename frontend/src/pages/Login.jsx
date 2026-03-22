@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import toast from 'react-hot-toast'
 import { API_URL } from '../config'
 import axios from 'axios'
+import SplashScreen from '../components/SplashScreen'
 
 // Minimal Custom Countries List for Login
 const COUNTRIES = [
@@ -23,6 +24,7 @@ export default function Login() {
   const [phoneNumber, setPhoneNumber] = useState('')
   const [countryDropdownOpen, setCountryDropdownOpen] = useState(false)
   const [countrySearch, setCountrySearch] = useState('')
+  const [rememberMe, setRememberMe] = useState(false)
 
   const [loading, setLoading] = useState(false)
   
@@ -34,6 +36,7 @@ export default function Login() {
   const [isOtpSuccess, setIsOtpSuccess] = useState(false)
   const [isOtpFailed, setIsOtpFailed] = useState(false)
   const [otpArriving, setOtpArriving] = useState(false)
+  const [showSplash, setShowSplash] = useState(false)
 
   const inputRefs = useRef([null, null, null, null, null, null])
   const maskTimers = useRef([null, null, null, null, null, null])
@@ -241,10 +244,17 @@ export default function Login() {
 
       setIsOtpSuccess(true)
       setTimeout(() => {
-        toast.success(`Welcome back!`)
-        login(res.data.access_token, res.data.user)
-        navigate('/dashboard')
+        setShowSplash(true)
       }, 1000)
+
+      // After splash animation (3000ms), login and navigate
+      window.__login_data = { 
+        token: {
+          access_token: res.data.access_token,
+          refresh_token: res.data.refresh_token
+        }, 
+        user: res.data.user 
+      }
 
     } catch (err) {
       setIsOtpFailed(true)
@@ -282,6 +292,18 @@ export default function Login() {
   }
 
   return (
+    <>
+    {showSplash && (
+      <SplashScreen 
+        onComplete={() => {
+          const { token, user } = window.__login_data;
+          login(token, user, rememberMe);
+          navigate('/dashboard');
+          setShowSplash(false);
+          delete window.__login_data;
+        }} 
+      />
+    )}
     <div className="min-h-screen flex items-center justify-center px-4 pt-16 pb-10 overflow-hidden relative" onClick={() => setCountryDropdownOpen(false)}>
       <div className="w-full max-w-md relative z-10 p-6 sm:p-0">
         
@@ -383,6 +405,30 @@ export default function Login() {
                 </div>
               </div>
             )}
+
+            <div className="flex items-center justify-between">
+              <label className="flex items-center gap-2 cursor-pointer group">
+                <div className="relative flex items-center justify-center">
+                  <input
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    className="peer sr-only"
+                  />
+                  <div className="w-5 h-5 border-2 border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 transition-all peer-checked:bg-red-600 peer-checked:border-red-600"></div>
+                  <svg className="absolute w-3.5 h-3.5 text-white opacity-0 peer-checked:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <span className="text-sm font-semibold text-slate-600 dark:text-slate-400 group-hover:text-slate-800 dark:group-hover:text-slate-200 transition-colors">
+                  Remember Me
+                </span>
+              </label>
+              
+              <Link to="/forgot-password" hidden className="text-sm font-bold text-red-600 hover:text-red-700">
+                Forgot password?
+              </Link>
+            </div>
 
             <p style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
               OTP will be sent to your registered contact
@@ -528,5 +574,6 @@ export default function Login() {
         </div>
       </div>
     </div>
+    </>
   )
 }

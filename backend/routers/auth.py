@@ -1,5 +1,5 @@
 import logging
-from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Request
 from sqlalchemy.orm import Session
 from database import get_db
 from models import User, OTPToken
@@ -11,6 +11,13 @@ from datetime import datetime, timedelta
 from pydantic import BaseModel, EmailStr
 from typing import Optional
 import os
+import schemas
+from auth import hash_password, verify_password, create_access_token, create_refresh_token, get_current_user, SECRET_KEY, ALGORITHM
+from jose import jwt, JWTError
+from limiter import limiter
+
+# In-memory set to store used/invalidated refresh tokens
+INVALIDATED_REFRESH_TOKENS = set()
 
 logger = logging.getLogger("medilink.auth")
 
@@ -32,7 +39,8 @@ OTP_EXPIRY_MINUTES = int(os.getenv("OTP_EXPIRY_MINUTES", "10"))
 from sqlalchemy import or_
 
 @router.post("/register", response_model=Token)
-def register(user_data: UserRegister, db: Session = Depends(get_db)):
+@limiter.limit("3/minute")
+def register(user_data: UserRegister, requestData: Request, db: Session = Depends(get_db)):
     try:
         # 1. Uniqueness check for email and phone
         filters = []
@@ -72,9 +80,11 @@ def register(user_data: UserRegister, db: Session = Depends(get_db)):
         logger.info("[AUTH] New user registered: %s (role=%s)", user_data.email or user_data.mobile_number, user_data.role)
         
         # 4. Return token
-        token = create_access_token(data={"sub": str(new_user.id)})
+        access_token = create_access_token(data={"sub": str(new_user.id)})
+        refresh_token = create_refresh_token(data={"sub": str(new_user.id)})
         return Token(
-            access_token=token,
+            access_token=access_token,
+            refresh_token=refresh_token,
             token_type="bearer",
             user=UserOut.model_validate(new_user)
         )
@@ -91,16 +101,38 @@ def register(user_data: UserRegister, db: Session = Depends(get_db)):
 
 
 @router.post("/login")
-def login(user_data: UserLogin, db: Session = Depends(get_db)):
+@limiter.limit("5/minute")
+def login(user_data: UserLogin, request: Request, db: Session = Depends(get_db)):
     """Standard email + password login. Now returns otp_required."""
     if user_data.email and user_data.password:
         user = db.query(User).filter(User.email == user_data.email).first()
+        
+        # Lockout check
+        if user and user.locked_until:
+            if datetime.utcnow() < user.locked_until:
+                raise HTTPException(
+                    status_code=403, 
+                    detail=f"Account locked. Try again after {user.locked_until}"
+                )
+
         if not user or not verify_password(user_data.password, user.password_hash):
+            if user:
+                user.failed_login_attempts += 1
+                if user.failed_login_attempts >= 5:
+                    user.locked_until = datetime.utcnow() + timedelta(minutes=15)
+                db.commit()
+            
             logger.warning("[AUTH] Failed password login for: %s", user_data.email)
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid email or password",
             )
+            
+        # Success - reset attempts
+        user.failed_login_attempts = 0
+        user.locked_until = None
+        db.commit()
+        
         logger.info("[AUTH] Password matched for: %s, requiring OTP", user_data.email)
         return {"status": "otp_required", "identifier": user.email}
     else:
@@ -251,14 +283,61 @@ def verify_otp_route(request: OTPVerify, db: Session = Depends(get_db)):
         logger.info("[AUTH] OTP verified for new registration: %s", identifier)
         return {"status": "verified", "message": "OTP verified successfully. Proceed to registration."}
 
-    token = create_access_token(data={"sub": str(user.id)})
+    access_token = create_access_token(data={"sub": str(user.id)})
+    refresh_token = create_refresh_token(data={"sub": str(user.id)})
     logger.info("[AUTH] OTP login success for user %s (%s)", user.id, identifier)
 
     return Token(
-        access_token=token,
+        access_token=access_token,
+        refresh_token=refresh_token,
         token_type="bearer",
         user=UserOut.model_validate(user)
     )
+
+
+@router.post("/refresh", response_model=Token)
+def refresh_token(request: schemas.RefreshRequest, db: Session = Depends(get_db)):
+    """
+    Refresh access token using a refresh token.
+    Implements refresh token rotation.
+    """
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate refresh token",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    
+    # Check if token was already used
+    if request.refresh_token in INVALIDATED_REFRESH_TOKENS:
+        raise HTTPException(status_code=401, detail="Refresh token has been invalidated or used")
+
+    try:
+        payload = jwt.decode(request.refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id: str = payload.get("sub")
+        token_type: str = payload.get("type")
+        
+        if user_id is None or token_type != "refresh":
+            raise credentials_exception
+            
+        user = db.query(User).filter(User.id == int(user_id)).first()
+        if not user:
+            raise credentials_exception
+            
+        # Invalidate the used refresh token
+        INVALIDATED_REFRESH_TOKENS.add(request.refresh_token)
+        
+        # Issue new pair
+        new_access = create_access_token(data={"sub": str(user.id)})
+        new_refresh = create_refresh_token(data={"sub": str(user.id)})
+        
+        return Token(
+            access_token=new_access,
+            refresh_token=new_refresh,
+            token_type="bearer",
+            user=UserOut.model_validate(user)
+        )
+    except JWTError:
+        raise credentials_exception
 
 @router.post("/biometric/enroll")
 def enroll_biometric(request: BiometricEnrollRequest, db: Session = Depends(get_db), current_user_id: int = Depends(get_current_user)):
@@ -282,12 +361,13 @@ def verify_biometric(request: BiometricVerifyRequest, db: Session = Depends(get_
         logger.warning("[AUTH] Biometric verification failed: no matching template found")
         raise HTTPException(status_code=404, detail="No matching biometric enrollment found")
         
-    token = create_access_token(data={"sub": str(user.id)})
+    access_token = create_access_token(data={"sub": str(user.id)})
+    refresh_token = create_refresh_token(data={"sub": str(user.id)})
     logger.info("[AUTH] Biometric login success for user %s", user.id)
     
-    return {
-        "success": True,
-        "access_token": token,
-        "token_type": "bearer",
-        "user": UserOut.model_validate(user).model_dump()
-    }
+    return Token(
+        access_token=access_token,
+        refresh_token=refresh_token,
+        token_type="bearer",
+        user=UserOut.model_validate(user)
+    )

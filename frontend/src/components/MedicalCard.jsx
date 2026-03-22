@@ -1,231 +1,271 @@
 import React, { useState } from 'react';
 import html2canvas from 'html2canvas';
+import toast from 'react-hot-toast';
+
+const FRONT_STYLES = {
+  wrapper: {
+    perspective: '1000px',
+    width: '100%',
+    maxWidth: '420px',
+    margin: '0 auto',
+    aspectRatio: '1.586',
+  },
+  inner: (isFlipped) => ({
+    position: 'relative',
+    width: '100%',
+    height: '100%',
+    transformStyle: 'preserve-3d',
+    transition: 'transform 0.65s cubic-bezier(0.4, 0, 0.2, 1)',
+    transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
+  }),
+  front: {
+    position: 'absolute',
+    inset: 0,
+    backfaceVisibility: 'hidden',
+    WebkitBackfaceVisibility: 'hidden',
+    borderRadius: '16px',
+    background: 'linear-gradient(135deg, #0f172a 0%, #1a2744 50%, #1e3a5f 100%)',
+    padding: '24px',
+    overflow: 'hidden',
+    boxShadow: '0 25px 50px rgba(0,0,0,0.5)',
+    display: 'flex',
+    flexDirection: 'column',
+  },
+  back: {
+    position: 'absolute',
+    inset: 0,
+    backfaceVisibility: 'hidden',
+    WebkitBackfaceVisibility: 'hidden',
+    transform: 'rotateY(180deg)',
+    borderRadius: '16px',
+    background: '#ffffff',
+    padding: '24px',
+    overflow: 'hidden',
+    boxShadow: '0 25px 50px rgba(0,0,0,0.3)',
+    border: '1px solid #e2e8f0',
+    display: 'flex',
+    flexDirection: 'column',
+  },
+};
 
 export default function MedicalCard({ data }) {
   const [isFlipped, setIsFlipped] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   
   if (!data) return null;
 
   const conditions = [];
-  if (data.is_diabetic) conditions.push({ label: 'Diabetic', icon: '💉' });
-  if (data.is_cardiac_patient) conditions.push({ label: 'Cardiac Patient', icon: '❤️' });
-  if (data.is_epileptic) conditions.push({ label: 'Epileptic', icon: '⚡' });
-  if (data.is_asthmatic) conditions.push({ label: 'Asthmatic', icon: '💨' });
-  if (data.has_pacemaker) conditions.push({ label: 'Pacemaker', icon: '🔋' });
-  if (data.has_implants) conditions.push({ label: 'Medical Implants', icon: '🔩' });
+  if (data.is_diabetic) conditions.push('Diabetic');
+  if (data.is_cardiac_patient) conditions.push('Cardiac');
+  if (data.is_epileptic) conditions.push('Epileptic');
+  if (data.is_asthmatic) conditions.push('Asthmatic');
 
   const handleDownload = async () => {
-    const cardEl = document.getElementById('medical-card-capture');
-    if (!cardEl) return;
-
-    // Deep clone so we don't mutate the live DOM
-    const clone = cardEl.cloneNode(true);
-    clone.style.position = 'fixed';
-    clone.style.top = '-9999px';
-    clone.style.left = '-9999px';
-    clone.style.zIndex = '-1';
-    document.body.appendChild(clone);
-
-    // Walk every element in the clone and replace oklch computed styles
-    // with safe hex fallbacks that html2canvas can parse
-    const oklchToHex = {
-      'oklch(0.145 0 0)': '#0f172a',
-      'oklch(0.985 0 0)': '#f8fafc',
-      'oklch(1 0 0)': '#ffffff',
-      'oklch(0 0 0)': '#000000',
-    };
-
-    clone.querySelectorAll('*').forEach(el => {
-      const computed = window.getComputedStyle(el);
-      ['color', 'backgroundColor', 'borderColor'].forEach(prop => {
-        const val = computed[prop];
-        if (val && val.includes('oklch')) {
-          // Replace known oklch values, fall back to black/white
-          el.style[prop] = oklchToHex[val] || (val.includes('0.985') ? '#f8fafc' : '#0f172a');
-        }
-      });
-    });
-
+    setDownloading(true);
     try {
+      const cardEl = document.getElementById('medical-card-capture');
+      if (!cardEl) throw new Error('Card element not found');
+
+      // Temporarily flatten the 3D transform for capture
+      const innerEl = cardEl.firstElementChild;
+      const originalTransform = innerEl.style.transform;
+      const originalTransformStyle = innerEl.style.transformStyle;
+      const originalTransition = innerEl.style.transition;
+
+      // Show whichever face is currently visible flat
+      innerEl.style.transform = isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)';
+      innerEl.style.transformStyle = 'flat';
+      innerEl.style.transition = 'none';
+
+      // Clone the card
+      const clone = cardEl.cloneNode(true);
+      clone.style.position = 'fixed';
+      clone.style.top = '0';
+      clone.style.left = '0';
+      clone.style.zIndex = '-9999';
+      clone.style.opacity = '1';
+      clone.style.pointerEvents = 'none';
+
+      // CRITICAL: Walk clone and replace ALL oklch computed colors with hex
+      const allEls = [clone, ...clone.querySelectorAll('*')];
+      allEls.forEach(el => {
+        const computed = window.getComputedStyle(el);
+        const props = ['color', 'backgroundColor', 'borderColor',
+                       'borderTopColor', 'borderBottomColor',
+                       'borderLeftColor', 'borderRightColor'];
+        props.forEach(prop => {
+          try {
+            const val = computed.getPropertyValue(
+              prop.replace(/([A-Z])/g, '-$1').toLowerCase()
+            );
+            if (val && val.includes('oklch')) {
+              // Replace oklch with safe fallback
+              if (val.includes('0.985') || val.includes('0.98')) {
+                el.style[prop] = '#f8fafc';
+              } else if (val.includes('0.145') || val.includes('0.14')) {
+                el.style[prop] = '#0f172a';
+              } else if (val.includes(' 0 0)')) {
+                // oklch(L 0 0) — achromatic, map by lightness
+                const lMatch = val.match(/oklch\(([\d.]+)/);
+                if (lMatch) {
+                  const l = parseFloat(lMatch[1]);
+                  el.style[prop] = l > 0.5 ? '#f1f5f9' : '#1e293b';
+                }
+              } else {
+                el.style[prop] = prop.includes('background') ? '#ffffff' : '#0f172a';
+              }
+            }
+          } catch(e) {}
+        });
+      });
+
+      document.body.appendChild(clone);
+      await new Promise(r => setTimeout(r, 100)); // let styles settle
+
       const canvas = await html2canvas(clone, {
-        scale: 2,
+        scale: 3,
         useCORS: true,
+        allowTaint: false,
         backgroundColor: null,
         logging: false,
+        removeContainer: true,
       });
-      const link = document.createElement('a');
-      link.download = 'medilink-card.png';
-      link.href = canvas.toDataURL('image/png');
-      link.click();
-    } finally {
+
       document.body.removeChild(clone);
+
+      // Restore original transform
+      innerEl.style.transform = originalTransform;
+      innerEl.style.transformStyle = originalTransformStyle;
+      innerEl.style.transition = originalTransition;
+
+      // Trigger download
+      const link = document.createElement('a');
+      link.download = `medilink-card-${isFlipped ? 'back' : 'front'}.png`;
+      link.href = canvas.toDataURL('image/png', 1.0);
+      link.click();
+
+      toast.success('Card downloaded successfully!');
+    } catch (err) {
+      console.error('Download error:', err);
+      toast.error('Download failed: ' + err.message);
+    } finally {
+      setDownloading(false);
     }
   };
 
   return (
-    <div className="flex flex-col items-center gap-6 w-full animate-fade-in">
-      {/* 3D CARD WRAPPER */}
-      <div id="medical-card-capture" style={{ perspective: '1000px', width: '100%', maxWidth: '400px', aspectRatio: '1.586' }}>
-
-        {/* INNER — this is what rotates */}
-        <div style={{
-          position: 'relative',
-          width: '100%',
-          height: '100%',
-          transformStyle: 'preserve-3d',
-          transition: 'transform 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
-          transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
-        }}>
-
+    <div className="flex flex-col items-center gap-8 w-full">
+      <div id="medical-card-capture" style={FRONT_STYLES.wrapper}>
+        <div style={FRONT_STYLES.inner(isFlipped)}>
           {/* FRONT FACE */}
-          <div style={{
-            position: 'absolute',
-            inset: 0,
-            backfaceVisibility: 'hidden',
-            WebkitBackfaceVisibility: 'hidden',
-            borderRadius: '16px',
-            background: 'linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%)',
-            color: '#ffffff',
-            padding: '24px',
-            overflow: 'hidden',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'space-between',
-            boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)',
-            border: '1px solid rgba(255,255,255,0.1)',
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <div style={FRONT_STYLES.front}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 'auto' }}>
               <div>
-                <h2 style={{ fontSize: '1.25rem', fontWeight: '800', color: '#ffffff', letterSpacing: '0.05em', margin: 0 }}>MEDICAL ID</h2>
-                <p style={{ fontSize: '0.7rem', color: '#94a3b8', margin: 0, marginTop: '2px', textTransform: 'uppercase' }}>Emergency Health Profile</p>
-              </div>
-              <div style={{ fontSize: '1.75rem' }}>🩸</div>
-            </div>
-
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
-              <p style={{ fontSize: '0.75rem', color: '#94a3b8', margin: 0, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Blood Group</p>
-              <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '4px' }}>
-                <span style={{ fontSize: '3.5rem', fontWeight: '900', color: '#ffffff', margin: 0, lineHeight: 1 }}>{data.blood_group || 'O+'}</span>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <span style={{ background: '#dc2626', color: '#ffffff', padding: '2px 8px', borderRadius: '4px', fontSize: '0.65rem', fontWeight: '700', textTransform: 'uppercase' }}>Blood Type</span>
-                    {data.is_organ_donor && (
-                      <span style={{ background: '#15803d', color: '#ffffff', padding: '2px 8px', borderRadius: '4px', fontSize: '0.65rem', fontWeight: '700', textTransform: 'uppercase' }}>Organ Donor</span>
-                    )}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                  <svg style={{ color: '#ef4444', width: '24px', height: '24px' }} viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
+                  </svg>
+                  <span style={{ color: '#ef4444', fontWeight: 800, fontSize: '18px' }}>MediLink</span>
                 </div>
+                <div style={{ color: '#64748b', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Medical ID Card</div>
+              </div>
+              <div style={ { background: '#dc2626', color: '#ffffff', padding: '4px 12px', borderRadius: '20px', fontSize: '13px', fontWeight: 700 } }>
+                {data.blood_group || 'O+'}
               </div>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-               <div>
-                 <p style={{ fontSize: '0.6rem', color: '#94a3b8', margin: 0, textTransform: 'uppercase' }}>Verification</p>
-                 <p style={{ fontSize: '0.9rem', fontWeight: '600', color: '#93c5fd', margin: 0 }}>SECURE ID: {data.id?.slice(-6).toUpperCase() || 'M-ID'}</p>
-               </div>
-               <div style={{ width: '45px', height: '30px', background: 'rgba(255,255,255,0.1)', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem' }}>🆔</div>
+            <div style={{ marginBottom: '20px' }}>
+              <div style={{ color: '#64748b', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '4px' }}>Patient Name</div>
+              <div style={{ color: '#ffffff', fontSize: '22px', fontWeight: 700 }}>{data.full_name || 'Medical Access'}</div>
             </div>
-          </div>
 
-          {/* BACK FACE — rotated 180deg so it starts hidden */}
-          <div style={{
-            position: 'absolute',
-            inset: 0,
-            backfaceVisibility: 'hidden',
-            WebkitBackfaceVisibility: 'hidden',
-            transform: 'rotateY(180deg)',
-            borderRadius: '16px',
-            background: '#ffffff',
-            color: '#0f172a',
-            padding: '24px',
-            overflow: 'hidden',
-            border: '1px solid #e2e8f0',
-            display: 'flex',
-            flexDirection: 'column',
-          }}>
-            <h3 style={{ fontSize: '1rem', fontWeight: 600, color: '#0f172a', marginBottom: '12px', borderBottom: '2px solid #f1f5f9', paddingBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Clinical Records
-            </h3>
-
-            <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {/* Allergies and Conditions Chips */}
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                {data.allergies && (
-                  <span style={{ background: '#fee2e2', color: '#991b1b', padding: '4px 10px', borderRadius: '99px', fontSize: '0.7rem', fontWeight: '700' }}>
-                    🚫 {data.allergies}
-                  </span>
-                )}
-                {conditions.map((c, i) => (
-                  <span key={i} style={{ background: '#dbeafe', color: '#1e40af', padding: '4px 10px', borderRadius: '99px', fontSize: '0.7rem', fontWeight: '700' }}>
-                    {c.icon} {c.label}
-                  </span>
-                ))}
-              </div>
-
-              {/* Medications */}
-              {data.current_medications && (
-                <div>
-                  <p style={{ fontSize: '0.6rem', textTransform: 'uppercase', color: '#64748b', fontWeight: '800', marginBottom: '2px' }}>Active Medications</p>
-                  <p style={{ fontSize: '0.85rem', color: '#0f172a', margin: 0, fontWeight: '500', lineHeight: 1.2 }}>{data.current_medications}</p>
-                </div>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '20px' }}>
+              {conditions.map((c, i) => (
+                <span key={i} style={{ background: 'rgba(255,255,255,0.15)', color: '#ffffff', padding: '3px 8px', borderRadius: '12px', fontSize: '11px' }}>
+                  {c}
+                </span>
+              ))}
+              {data.is_organ_donor && (
+                <span style={{ background: '#15803d', color: '#ffffff', padding: '4px 10px', borderRadius: '20px', fontSize: '11px' }}>
+                  Organ Donor
+                </span>
               )}
+            </div>
 
-              {/* Contacts Grid */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: 'auto' }}>
-                <div>
-                  <p style={{ fontSize: '0.6rem', textTransform: 'uppercase', color: '#64748b', fontWeight: '800', marginBottom: '2px' }}>Emergency Contact</p>
-                  <p style={{ fontSize: '0.8rem', color: '#0f172a', margin: 0, fontWeight: 600 }}>{data.emergency_contact_name || 'Not Provided'}</p>
-                  <p style={{ fontSize: '0.75rem', color: '#2563eb', margin: 0 }}>{data.emergency_contact_phone}</p>
-                </div>
-                <div>
-                  <p style={{ fontSize: '0.6rem', textTransform: 'uppercase', color: '#64748b', fontWeight: '800', marginBottom: '2px' }}>Primary Doctor</p>
-                  <p style={{ fontSize: '0.8rem', color: '#0f172a', margin: 0, fontWeight: 600 }}>{data.doctor_name || 'Not Provided'}</p>
-                  <p style={{ fontSize: '0.75rem', color: '#2563eb', margin: 0 }}>{data.doctor_phone}</p>
-                </div>
+            <div style={{ marginTop: 'auto' }}>
+              <div style={{ color: '#64748b', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '2px' }}>MediLink ID</div>
+              <div style={{ color: '#93c5fd', fontFamily: 'monospace', fontSize: '13px', letterSpacing: '0.15em' }}>
+                {data.medilink_id || 'PENDING'}
               </div>
             </div>
 
-            {/* Bottom strip */}
-            <div style={{ background: '#1e40af', color: '#ffffff', margin: '16px -24px -24px -24px', padding: '8px', fontSize: '0.7rem', textAlign: 'center', fontWeight: '700' }}>
-              🚨 In emergency, scan QR or call 112
+            <div style={{ background: '#1d4ed8', color: '#ffffff', textAlign: 'center', padding: '8px', borderRadius: '8px', fontSize: '11px', marginTop: '16px' }}>
+               EMERGENCY MEDICAL INFORMATION
             </div>
           </div>
 
+          {/* BACK FACE */}
+          <div style={FRONT_STYLES.back}>
+            <div style={{ marginBottom: '14px' }}>
+              <div style={{ color: '#0f172a', fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '6px' }}>Critical Allergies</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                {data.allergies ? data.allergies.split(',').map((a, i) => (
+                  <span key={i} style={{ background: '#fee2e2', color: '#991b1b', padding: '2px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: 500 }}>
+                    {a.trim()}
+                  </span>
+                )) : <span style={{ color: '#64748b', fontSize: '11px' }}>None Reported</span>}
+              </div>
+            </div>
+
+            <div style={{ marginBottom: '14px' }}>
+              <div style={{ color: '#0f172a', fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '6px' }}>Current Medications</div>
+              <div style={{ color: '#0f172a', fontSize: '12px' }}>{data.current_medications || 'None'}</div>
+            </div>
+
+            <div style={{ borderTop: '1px solid #e2e8f0', margin: '10px 0' }} />
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div>
+                <div style={{ color: '#0f172a', fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '6px' }}>Emergency Contact</div>
+                <div style={{ color: '#0f172a', fontWeight: 600, fontSize: '13px' }}>{data.emergency_contact_name}</div>
+                <div style={{ color: '#2563eb', fontSize: '13px', fontFamily: 'monospace' }}>{data.emergency_contact_phone}</div>
+              </div>
+              <div>
+                <div style={{ color: '#0f172a', fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '6px' }}>Primary Doctor</div>
+                <div style={{ color: '#0f172a', fontWeight: 600, fontSize: '13px' }}>{data.doctor_name || 'Dr. Not Assigned'}</div>
+                <div style={{ color: '#2563eb', fontSize: '13px', fontFamily: 'monospace' }}>{data.doctor_phone || '---'}</div>
+              </div>
+            </div>
+
+            <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+              <div style={{ color: '#64748b', fontSize: '10px' }}>
+                Issued: {new Date().toLocaleDateString()}
+              </div>
+              <div style={{ color: '#ef4444', fontWeight: 800, fontSize: '14px' }}>MediLink</div>
+            </div>
+
+            <div style={{ background: '#1e40af', color: '#ffffff', textAlign: 'center', padding: '8px', borderRadius: '8px', fontSize: '11px', marginTop: '12px' }}>
+              SCAN QR ON FRONT FOR FULL PROFILE
+            </div>
+          </div>
         </div>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', width: '100%', maxWidth: '400px' }}>
-        {/* Toggling Button */}
-        <button 
-          onClick={() => setIsFlipped(prev => !prev)}
-          className="btn-primary"
-          style={{ 
-            width: '100%', 
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '8px'
-          }}
+      <div style={{ display: 'flex', gap: '12px', width: '100%', maxWidth: '420px' }}>
+        <button
+          onClick={() => setIsFlipped(!isFlipped)}
+          className="flex-1 py-4 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-bold rounded-2xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-all border border-slate-200 dark:border-slate-700"
         >
-          <span>{isFlipped ? "Show Front" : "Flip Card"}</span>
-          <span style={{ fontSize: '1.2rem' }}>↻</span>
+          {isFlipped ? 'Show Front' : 'Flip Card'}
         </button>
-
-        {/* Download Button */}
-        <button 
+        <button
           onClick={handleDownload}
-          className="btn-secondary"
-          style={{ 
-            width: '100%', 
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '8px'
-          }}
+          disabled={downloading}
+          className="flex-1 py-4 bg-red-600 text-white font-bold rounded-2xl hover:bg-red-700 transition-all shadow-lg shadow-red-600/20 disabled:opacity-50"
         >
-          <span>Download Card PNG</span>
-          <span style={{ fontSize: '1.2rem' }}>💾</span>
+          {downloading ? 'Downloading...' : 'Download PNG'}
         </button>
       </div>
     </div>
   );
 }
-
-

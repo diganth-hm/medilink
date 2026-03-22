@@ -1,10 +1,31 @@
-from pydantic import BaseModel, EmailStr
-from typing import Optional, List, Dict, Any
+from pydantic import BaseModel, EmailStr, validator
+from typing import Optional, List, Dict, Any, Union
 from datetime import datetime
+import re
+import html
+
+def sanitize_string(value: str) -> str:
+    if not value or not isinstance(value, str):
+        return value
+    # Remove HTML tags
+    value = re.sub(r'<[^>]+>', '', value)
+    # Escape HTML entities
+    value = html.escape(value)
+    # Remove null bytes
+    value = value.replace('\x00', '')
+    # Limit length
+    return value[:500]
+
+class BaseSchema(BaseModel):
+    @validator('*', pre=True)
+    def sanitize_fields(cls, v):
+        if isinstance(v, str):
+            return sanitize_string(v)
+        return v
 
 
 # Auth schemas
-class UserRegister(BaseModel):
+class UserRegister(BaseSchema):
     name: str
     email: Optional[EmailStr] = None
     mobile_number: Optional[str] = None
@@ -12,7 +33,7 @@ class UserRegister(BaseModel):
     role: str = "patient"
 
 
-class UserLogin(BaseModel):
+class UserLogin(BaseSchema):
     email: Optional[EmailStr] = None
     mobile_number: Optional[str] = None
     password: Optional[str] = None
@@ -57,14 +78,14 @@ class Token(BaseModel):
 
 
 # Medical Profile schemas
-class EmergencyContact(BaseModel):
+class EmergencyContact(BaseSchema):
     id: Optional[str] = None # UUID for management
     name: str
     relationship: str
     phone: str
     is_primary: bool = False
 
-class MedicalProfileCreate(BaseModel):
+class MedicalProfileCreate(BaseSchema):
     blood_group: Optional[str] = None
     date_of_birth: Optional[str] = None
     allergies: Optional[str] = None
@@ -128,7 +149,7 @@ class PrescriptionBase(BaseModel):
 class PrescriptionCreate(PrescriptionBase):
     pass
 
-class PrescriptionUpdate(BaseModel):
+class PrescriptionUpdate(BaseSchema):
     drug_name: Optional[str] = None
     dosage: Optional[str] = None
     frequency: Optional[str] = None
@@ -152,21 +173,26 @@ class PrescriptionOut(PrescriptionBase):
 
 
 # Emergency data schema (public - minimal fields)
+class EmergencyPrescriptionOut(BaseModel):
+    drug_name: str
+    dosage: str
+
+    class Config:
+        from_attributes = True
+
+class EmergencyContactOut(BaseModel):
+    name: str
+    phone: str
+    relationship: str
+
 class EmergencyDataOut(BaseModel):
     patient_name: str
     medilink_id: Optional[str] = None
     blood_group: Optional[str]
-    date_of_birth: Optional[str]
     allergies: Optional[str]
     current_medications: Optional[str]
     chronic_conditions: Optional[str]
-    surgical_history: Optional[str]
-    immunization_records: Optional[str]
-    psychiatric_medications: Optional[str]
-    emergency_contact_name: Optional[str]
-    emergency_contact_phone: Optional[str]
-    emergency_contact_relation: Optional[str]
-    emergency_contacts: Optional[List[EmergencyContact]] = [] # Included for responders
+    emergency_contacts: Optional[List[EmergencyContactOut]] = []
     doctor_name: Optional[str]
     doctor_phone: Optional[str]
     has_pacemaker: Optional[bool]
@@ -175,13 +201,22 @@ class EmergencyDataOut(BaseModel):
     is_cardiac_patient: Optional[bool]
     is_epileptic: Optional[bool]
     is_asthmatic: Optional[bool]
-    prescriptions: Optional[List[PrescriptionOut]] = []
+    prescriptions: Optional[List[EmergencyPrescriptionOut]] = []
 
+
+class PatientContext(BaseModel):
+    name: str = ""
+    blood_type: str = ""
+    conditions: List[str] = []
+    medications: List[str] = []
+    allergies: List[str] = []
+    age: Optional[int] = None
 
 class ChatMessage(BaseModel):
-    message: str
+    messages: Optional[List[Dict[str, str]]] = None # [{role, content}]
+    message: Optional[str] = None # Fallback
     session_id: str
-    patient_context: Optional[str] = None
+    patient_context: Optional[PatientContext] = None
     location: Optional[str] = None  # "lat,lng" string
     lat: Optional[float] = None     # live GPS latitude
     lng: Optional[float] = None     # live GPS longitude
@@ -291,7 +326,7 @@ class AppointmentBase(BaseModel):
 class AppointmentCreate(AppointmentBase):
     pass
 
-class AppointmentUpdate(BaseModel):
+class AppointmentUpdate(BaseSchema):
     doctor_name: Optional[str] = None
     specialty: Optional[str] = None
     clinic_or_hospital: Optional[str] = None
@@ -311,7 +346,7 @@ class AppointmentOut(AppointmentBase):
         from_attributes = True
 
 
-class PasswordUpdate(BaseModel):
+class PasswordUpdate(BaseSchema):
     current_password: str
     new_password: str
 
@@ -329,6 +364,16 @@ class AccessLogOut(BaseModel):
     user_id: int
     scanned_at: datetime
     location: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+class QRAccessLogOut(BaseModel):
+    id: int
+    user_id: int
+    accessed_at: datetime
+    ip_address: str
 
     class Config:
         from_attributes = True

@@ -8,6 +8,10 @@ from database import get_db
 import models
 from models import QRCode, User, MedicalProfile
 from schemas import EmergencyDataOut
+from fastapi import Request
+from jose import jwt, JWTError
+import hashlib
+from auth import SECRET_KEY, ALGORITHM
 
 router = APIRouter()
 
@@ -57,33 +61,57 @@ async def emergency_status():
     return {"status": "ok", "message": "Emergency services available"}
 
 @router.get("/{qr_token}", response_model=EmergencyDataOut)
-def get_emergency_data(qr_token: str, db: Session = Depends(get_db)):
-    qr_record = db.query(QRCode).filter(QRCode.qr_token == qr_token).first()
-    if not qr_record:
-        raise HTTPException(status_code=404, detail="Invalid or expired QR code")
+def get_emergency_data(qr_token: str, request: Request, db: Session = Depends(get_db)):
+    """
+    Public endpoint for emergency responders. 
+    Verifies JWT token expiry + hash rotation.
+    Logs each access for the user's audit history.
+    """
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Invalid or expired QR token",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    
+    # 1. Basic format check and decode (jose handles exp check automatically if present)
+    try:
+        payload = jwt.decode(qr_token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id = payload.get("sub")
+        token_type = payload.get("type")
+        if user_id is None or token_type != "qr":
+            raise HTTPException(404, "Invalid QR token format")
+    except JWTError:
+        raise HTTPException(404, "QR token expired or corrupted")
 
-    user = db.query(User).filter(User.id == qr_record.user_id).first()
+    # 2. Verify hash rotation
+    user = db.query(User).filter(User.id == int(user_id)).first()
     if not user:
-        raise HTTPException(status_code=404, detail="Patient not found")
+        raise HTTPException(404, "User not found")
+        
+    token_hash = hashlib.sha256(qr_token.encode()).hexdigest()
+    if user.current_qr_token_hash != token_hash:
+        raise HTTPException(404, "This QR code has been revoked or regenerated")
 
+    # 3. Log access
+    access_log = models.QRAccessLog(
+        user_id=user.id,
+        ip_address=request.client.host
+    )
+    db.add(access_log)
+    db.commit()
+
+    # 4. Fetch and Return masked profile
     profile = db.query(MedicalProfile).filter(MedicalProfile.user_id == user.id).first()
     if not profile:
-        raise HTTPException(status_code=404, detail="Medical profile not found for this patient")
+        raise HTTPException(status_code=404, detail="Medical profile not found")
 
     return EmergencyDataOut(
         patient_name=user.name,
         medilink_id=user.medilink_id,
         blood_group=profile.blood_group,
-        date_of_birth=profile.date_of_birth,
         allergies=profile.allergies,
         current_medications=profile.current_medications,
         chronic_conditions=profile.chronic_conditions,
-        surgical_history=profile.surgical_history,
-        immunization_records=profile.immunization_records,
-        psychiatric_medications=profile.psychiatric_medications,
-        emergency_contact_name=profile.emergency_contact_name,
-        emergency_contact_phone=profile.emergency_contact_phone,
-        emergency_contact_relation=profile.emergency_contact_relation,
         emergency_contacts=profile.emergency_contacts or [],
         doctor_name=profile.doctor_name,
         doctor_phone=profile.doctor_phone,
