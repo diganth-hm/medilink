@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import axios from 'axios'
 import ChatWidget from '../components/ChatWidget'
+import { PhoneIcon, StarIcon } from '@heroicons/react/24/solid'
 
 export default function EmergencyView() {
   const { qr_token } = useParams()
@@ -34,6 +35,7 @@ export default function EmergencyView() {
       d.psychiatric_medications && `Psychiatric Meds: ${d.psychiatric_medications}`,
       d.surgical_history && `Surgical History: ${d.surgical_history}`,
       d.emergency_contact_name && `Emergency Contact: ${d.emergency_contact_name} (${d.emergency_contact_relation}) ${d.emergency_contact_phone}`,
+      d.prescriptions?.length > 0 && `Active Prescriptions: ${d.prescriptions.map(p => `${p.drug_name} (${p.dosage}, ${p.frequency})`).join(', ')}`,
       d.doctor_name && `Primary Doctor: ${d.doctor_name} ${d.doctor_phone}`,
     ].filter(Boolean)
     return parts.join('. ')
@@ -128,10 +130,30 @@ export default function EmergencyView() {
         )}
 
         {/* MEDICATIONS */}
-        {data.current_medications && (
-          <div className="card mb-4">
-            <h2 className="text-yellow-400 font-bold uppercase tracking-wider text-sm mb-3">💊 Current Medications</h2>
-            <p className="text-primary leading-relaxed">{data.current_medications}</p>
+        {(data.current_medications || data.prescriptions?.length > 0) && (
+          <div className="card mb-4 bg-slate-900 border-yellow-500/20 shadow-lg shadow-yellow-950/20">
+            <h2 className="text-yellow-400 font-black uppercase tracking-wider text-sm mb-4 flex items-center gap-2">
+              <span className="text-xl">💊</span> Active Medications
+            </h2>
+            <div className="space-y-4">
+              {data.prescriptions?.map((p, idx) => (
+                <div key={idx} className="bg-slate-800/50 p-4 rounded-xl border border-slate-700/50">
+                  <div className="flex justify-between items-start mb-1">
+                    <p className="text-xl font-black text-white uppercase tracking-tight">{p.drug_name}</p>
+                    <span className="bg-blue-600 text-white px-2 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-wider">{p.dosage}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-yellow-400/80 text-xs font-bold uppercase tracking-widest">
+                    <span>{p.frequency?.replace('_', ' ')}</span>
+                    {p.instructions && <span className="text-slate-500 italic lowercase tracking-tight border-l border-slate-700 pl-2">"{p.instructions}"</span>}
+                  </div>
+                </div>
+              ))}
+              {data.current_medications && (
+                <div className="p-4 bg-slate-800/30 rounded-xl border border-slate-700/30 text-slate-300 text-sm italic">
+                  Additional Notes: {data.current_medications}
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -167,23 +189,41 @@ export default function EmergencyView() {
           </div>
         )}
 
-        {/* EMERGENCY CONTACT */}
-        {data.emergency_contact_name && (
+        {/* EMERGENCY CONTACTS */}
+        {(data.emergency_contacts?.length > 0 || data.emergency_contact_name) && (
           <div className="card border-green-500/30 mb-4">
-            <h2 className="text-green-400 font-bold uppercase tracking-wider text-sm mb-4">📞 Emergency Contact</h2>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xl font-bold text-primary">{data.emergency_contact_name}</p>
-                <p className="text-secondary text-sm">{data.emergency_contact_relation}</p>
-              </div>
-              <a
-                href={`tel:${data.emergency_contact_phone}`}
-                className="flex items-center gap-2 bg-green-600 hover:bg-green-500 text-primary font-bold px-5 py-3 rounded-xl transition-colors text-sm"
-              >
-                📱 Call Now
-              </a>
+            <h2 className="text-green-400 font-bold uppercase tracking-wider text-sm mb-4">📞 Emergency Contacts</h2>
+            <div className="space-y-4">
+              {data.emergency_contacts?.length > 0 ? (
+                data.emergency_contacts.sort((a,b) => b.is_primary - a.is_primary).map((contact, idx) => (
+                  <div key={idx} className={`flex items-center justify-between p-4 rounded-xl border ${contact.is_primary ? 'bg-green-600/20 border-green-400' : 'bg-slate-900 border-slate-800'}`}>
+                    <div>
+                      <div className="flex items-center gap-2 text-white">
+                        <span className="text-xl font-semibold">{contact.name}</span>
+                        {contact.is_primary && <StarIcon className="w-5 h-5 text-amber-400" />}
+                      </div>
+                      <span className="text-xs uppercase font-extrabold text-secondary tracking-widest">{contact.relationship}</span>
+                      <p className="font-mono text-green-400 mt-1 font-bold">{contact.phone}</p>
+                    </div>
+                    <a href={`tel:${contact.phone}`} className="bg-green-600 hover:bg-green-500 p-4 rounded-full transition-all shadow-xl shadow-green-950">
+                      <PhoneIcon className="w-6 h-6 text-white" />
+                    </a>
+                  </div>
+                ))
+              ) : (
+                /* Fallback to legacy single contact if no list available */
+                <div className="flex items-center justify-between p-4 bg-green-900/20 border border-green-500/30 rounded-xl">
+                  <div>
+                    <p className="text-xl font-bold text-white">{data.emergency_contact_name}</p>
+                    <p className="text-secondary text-xs font-bold uppercase tracking-widest">{data.emergency_contact_relation}</p>
+                    <p className="font-mono text-green-400 mt-1 font-bold">{data.emergency_contact_phone}</p>
+                  </div>
+                  <a href={`tel:${data.emergency_contact_phone}`} className="bg-green-600 p-4 rounded-full shadow-lg">
+                    <PhoneIcon className="w-6 h-6 text-white" />
+                  </a>
+                </div>
+              )}
             </div>
-            <p className="text-secondary mt-2 font-mono">{data.emergency_contact_phone}</p>
           </div>
         )}
 

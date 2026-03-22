@@ -376,18 +376,18 @@ export default function Register() {
         
         {/* Registration Form View */}
         <div className={`transition-all duration-500 transform ${step === 'form' ? 'translate-y-0 opacity-100 scale-100 pointer-events-auto' : '-translate-y-full opacity-0 scale-95 pointer-events-none absolute inset-0'}`}>
-          <div className="text-center mb-6">
-            <h1 className="text-3xl font-bold text-[var(--text-primary)]">Create Account</h1>
-            <p className="text-[var(--text-secondary)] mt-2">Join MediLink and protect your health information</p>
+          <div className="text-center mb-8 animate-in fade-in slide-in-from-top-4 duration-500">
+            <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tight">Create Account</h1>
+            <p className="text-slate-500 dark:text-slate-400 font-medium mt-2">Join MediLink and protect your health information</p>
           </div>
 
-          <form onSubmit={handleContinue} className="space-y-5 bg-[var(--bg-card)] p-6 rounded-2xl border border-[var(--border)] shadow-xl relative z-10 w-full mb-8">
+          <form onSubmit={handleContinue} className="space-y-6 bg-white dark:bg-slate-800/80 backdrop-blur-xl p-8 rounded-[2.5rem] border border-slate-200 dark:border-slate-700/50 shadow-2xl shadow-slate-200/50 dark:shadow-none relative z-10 w-full mb-8">
             {/* 1. Full Name */}
             <div>
-              <label className="block text-sm font-medium text-[var(--text-primary)] mb-1">Full Name</label>
+              <label className="block text-xs font-black uppercase text-slate-500 dark:text-slate-400 mb-2 ml-1">Full Name</label>
               <input
                 type="text"
-                className="w-full px-4 py-3 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] focus:outline-none focus:border-[#E5341A]"
+                className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl text-slate-900 dark:text-white font-medium focus:outline-none focus:ring-2 focus:ring-red-500/50 transition-all placeholder-slate-400"
                 placeholder="Your full name"
                 value={name}
                 onChange={e => setName(e.target.value)}
@@ -554,18 +554,18 @@ export default function Register() {
                   ‹
                 </button>
                 
-                <div className="w-full max-w-[260px] overflow-hidden relative" style={{ minHeight: '130px' }}>
+                <div className="w-full max-w-[260px] overflow-hidden relative" style={{ minHeight: '140px' }}>
                   {ROLES.map((r, i) => {
                     const isActive = i === currentRoleIndex;
                     if (!isActive) return null;
                     return (
                       <div 
                         key={r.value} 
-                        className={`w-full bg-[var(--bg-card)] border-2 border-[#E5341A] rounded-2xl p-6 text-center shadow-lg absolute inset-0 flex flex-col items-center justify-center gap-2 ${slideDirection === 'right' ? 'animate-slideInRight' : 'animate-slideInLeft'}`}
+                        className={`w-full bg-white dark:bg-slate-900 border-2 border-red-600 rounded-[2rem] p-6 text-center shadow-xl absolute inset-0 flex flex-col items-center justify-center gap-2 ${slideDirection === 'right' ? 'animate-slideInRight' : 'animate-slideInLeft'}`}
                       >
-                         <span className="text-[36px] leading-[1]">{r.icon}</span>
-                         <h3 className="text-[18px] font-bold text-[var(--text-primary)] m-0">{r.label}</h3>
-                         <p className="text-[13px] text-[var(--text-secondary)] m-0 leading-tight">{r.desc}</p>
+                         <span className="text-4xl leading-none">{r.icon}</span>
+                         <h3 className="text-lg font-black text-slate-900 dark:text-white m-0 uppercase tracking-tight">{r.label}</h3>
+                         <p className="text-xs text-slate-500 dark:text-slate-400 m-0 font-medium leading-tight">{r.desc}</p>
                       </div>
                     )
                   })}
@@ -605,9 +605,9 @@ export default function Register() {
             </button>
           </form>
 
-          <p className="text-center text-[var(--text-secondary)] text-sm mb-4">
+          <p className="text-center text-slate-500 dark:text-slate-400 text-sm font-medium mb-4">
             Already have an account?{' '}
-            <Link to="/login" className="text-[#E5341A] hover:underline font-medium">Sign in</Link>
+            <Link to="/login" className="text-red-600 hover:text-red-700 font-black transition-colors underline decoration-2 underline-offset-4">Sign in</Link>
           </p>
         </div>
 

@@ -18,8 +18,14 @@ export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
-    const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
-    setTheme(currentTheme);
+    const savedTheme = localStorage.getItem('medilink_theme') || 'dark';
+    setTheme(savedTheme);
+    if (savedTheme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    document.documentElement.setAttribute('data-theme', savedTheme);
 
     const handleScroll = () => {
       setScrolled(window.scrollY > 10);
@@ -31,6 +37,11 @@ export default function Navbar() {
   const toggleTheme = () => {
     const newTheme = theme === 'dark' ? 'light' : 'dark';
     setTheme(newTheme);
+    if (newTheme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
     document.documentElement.setAttribute('data-theme', newTheme);
     localStorage.setItem('medilink_theme', newTheme);
   };
@@ -319,10 +330,10 @@ export default function Navbar() {
         }
 
         /* Inline SVG theme responses */
-        [data-theme="light"] .nav-logo-medi {
-          fill: #0A1628;
+        .nav-logo-medi {
+           fill: #0A1628; /* Light default */
         }
-        [data-theme="dark"] .nav-logo-medi {
+        .dark .nav-logo-medi {
           fill: #FFFFFF;
         }
 

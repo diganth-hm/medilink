@@ -1,364 +1,556 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
-import axios from 'axios'
-import { useAuth } from '../context/AuthContext'
-import toast from 'react-hot-toast'
+import { useState, useEffect, useMemo } from 'react';
+import { useAuth } from '../context/AuthContext';
+import { API_URL } from '../config';
+import axios from 'axios';
+import { toast } from 'react-hot-toast';
+import { 
+  PlusIcon, 
+  MagnifyingGlassIcon, 
+  FunnelIcon,
+  ArrowDownTrayIcon,
+  EyeIcon,
+  TrashIcon,
+  SparklesIcon,
+  XMarkIcon,
+  CalendarDaysIcon,
+  UserIcon,
+  ChevronUpIcon,
+  ChevronDownIcon,
+  DocumentTextIcon,
+  BeakerIcon,
+  QueueListIcon,
+  CpuChipIcon,
+  ShieldCheckIcon,
+  ClockIcon
+} from '@heroicons/react/24/outline';
 
-const FILE_TYPE_ICONS = {
-  image: '🖼️',
-  pdf: '📄',
-  document: '📝',
-}
+const CATEGORIES = [
+  { id: 'all', label: 'All', icon: <QueueListIcon className="w-4 h-4" />, color: 'slate' },
+  { id: 'lab_report', label: 'Lab Reports', icon: <BeakerIcon className="w-4 h-4" />, color: 'blue', emoji: '🧪' },
+  { id: 'prescription', label: 'Prescriptions', icon: <DocumentTextIcon className="w-4 h-4" />, color: 'green', emoji: '💊' },
+  { id: 'scan', label: 'Scans', icon: <MagnifyingGlassIcon className="w-4 h-4" />, color: 'purple', emoji: '🔬' },
+  { id: 'vaccination', label: 'Vaccination', icon: <ShieldCheckIcon className="w-4 h-4" />, color: 'teal', emoji: '💉' },
+  { id: 'surgery', label: 'Surgery', icon: <CpuChipIcon className="w-4 h-4" />, color: 'red', emoji: '🏥' },
+  { id: 'other', label: 'Other', icon: <DocumentTextIcon className="w-4 h-4" />, color: 'gray', emoji: '📄' },
+];
 
-const FILE_TYPE_COLORS = {
-  image: 'from-blue-500/20 to-cyan-500/10 border-blue-500/30 text-blue-400',
-  pdf: 'from-red-500/20 to-orange-500/10 border-red-500/30 text-red-400',
-  document: 'from-green-500/20 to-emerald-500/10 border-green-500/30 text-green-400',
-}
-
-function formatBytes(bytes) {
-  if (!bytes) return 'Unknown size'
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-}
+const CATEGORY_STYLES = {
+  lab_report: { bg: 'bg-blue-100 dark:bg-blue-900/30', text: 'text-blue-600', border: 'border-blue-200 dark:border-blue-800' },
+  prescription: { bg: 'bg-green-100 dark:bg-green-900/30', text: 'text-green-600', border: 'border-green-200 dark:border-green-800' },
+  scan: { bg: 'bg-purple-100 dark:bg-purple-900/30', text: 'text-purple-600', border: 'border-purple-200 dark:border-purple-800' },
+  vaccination: { bg: 'bg-teal-100 dark:bg-teal-900/30', text: 'text-teal-600', border: 'border-teal-200 dark:border-teal-800' },
+  surgery: { bg: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-600', border: 'border-red-200 dark:border-red-800' },
+  other: { bg: 'bg-gray-100 dark:bg-gray-900/30', text: 'text-gray-600', border: 'border-gray-200 dark:border-gray-800' },
+};
 
 export default function MedicalRecords() {
-  const [records, setRecords] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [uploading, setUploading] = useState(false)
-  const [dragOver, setDragOver] = useState(false)
-  const [previewRecord, setPreviewRecord] = useState(null)
-  const [uploadForm, setUploadForm] = useState({ title: '', description: '', issuing_doctor_code: '' })
-  const [pendingFile, setPendingFile] = useState(null)
-  const [uploadProgress, setUploadProgress] = useState(0)
-  const fileInputRef = useRef(null)
+  const { user } = useAuth();
+  const [records, setRecords] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [activeCategory, setActiveCategory] = useState('all');
+  const [sortOrder, setSortOrder] = useState('desc'); // desc = newest first
+  const [summaries, setSummaries] = useState({}); // { recordId: summaryText }
+  const [summarizingId, setSummarizingId] = useState(null);
+  
+  const [formData, setFormData] = useState({
+    title: '',
+    category: 'lab_report',
+    record_date: new Date().toISOString().split('T')[0],
+    doctor_name: '',
+    notes: '',
+    file: null
+  });
 
-  const fetchRecords = useCallback(async () => {
+  useEffect(() => {
+    fetchRecords();
+  }, []);
+
+  const fetchRecords = async () => {
     try {
-      const res = await axios.get('/records/my-records')
-      setRecords(res.data)
-    } catch {
-      toast.error('Failed to load records')
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  useEffect(() => { fetchRecords() }, [fetchRecords])
-
-  const handleFileSelect = (file) => {
-    if (!file) return
-    const allowed = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf',
-      'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain']
-    if (!allowed.includes(file.type)) {
-      toast.error('File type not supported. Use JPEG, PNG, PDF, DOC, or TXT.')
-      return
-    }
-    if (file.size > 20 * 1024 * 1024) {
-      toast.error('File too large. Max 20MB allowed.')
-      return
-    }
-    setPendingFile(file)
-    if (!uploadForm.title) {
-      setUploadForm(f => ({ ...f, title: file.name.replace(/\.[^.]+$/, '') }))
-    }
-  }
-
-  const handleDrop = (e) => {
-    e.preventDefault()
-    setDragOver(false)
-    const file = e.dataTransfer.files[0]
-    handleFileSelect(file)
-  }
-
-  const handleUpload = async () => {
-    if (!pendingFile || !uploadForm.title.trim()) {
-      toast.error('Please select a file and enter a title.')
-      return
-    }
-    setUploading(true)
-    setUploadProgress(0)
-    try {
-      const formData = new FormData()
-      formData.append('file', pendingFile)
-      formData.append('title', uploadForm.title.trim())
-      if (uploadForm.description) formData.append('description', uploadForm.description)
-      if (uploadForm.issuing_doctor_code) formData.append('issuing_doctor_code', uploadForm.issuing_doctor_code)
-
-      await axios.post('/records/upload', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-        onUploadProgress: (e) => {
-          setUploadProgress(Math.round((e.loaded * 100) / e.total))
-        },
-      })
-      toast.success('Record uploaded successfully!')
-      setPendingFile(null)
-      setUploadForm({ title: '', description: '', issuing_doctor_code: '' })
-      setUploadProgress(0)
-      fetchRecords()
+      setLoading(true);
+      const res = await axios.get(`${API_URL}/health-records`);
+      setRecords(res.data);
     } catch (err) {
-      toast.error(err.response?.data?.detail || 'Upload failed')
+      toast.error('Failed to load health records');
     } finally {
-      setUploading(false)
+      setLoading(false);
     }
-  }
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file && file.size > 10 * 1024 * 1024) {
+      toast.error('File too large (Max 10MB)');
+      return;
+    }
+    setFormData({ ...formData, file });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const data = new FormData();
+    data.append('title', formData.title);
+    data.append('category', formData.category);
+    data.append('record_date', formData.record_date);
+    data.append('doctor_name', formData.doctor_name);
+    data.append('notes', formData.notes);
+    if (formData.file) data.append('file', formData.file);
+
+    try {
+      toast.loading('Saving record...', { id: 'upload' });
+      await axios.post(`${API_URL}/health-records`, data, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      toast.success('Record saved successfully', { id: 'upload' });
+      setShowForm(false);
+      setFormData({
+        title: '',
+        category: 'lab_report',
+        record_date: new Date().toISOString().split('T')[0],
+        doctor_name: '',
+        notes: '',
+        file: null
+      });
+      fetchRecords();
+    } catch (err) {
+      toast.error('Failed to save record', { id: 'upload' });
+    }
+  };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Delete this record? This cannot be undone.')) return
+    if (!window.confirm('Delete this record permanently?')) return;
     try {
-      await axios.delete(`/records/${id}`)
-      setRecords(r => r.filter(rec => rec.id !== id))
-      toast.success('Record deleted')
-    } catch {
-      toast.error('Failed to delete record')
+      await axios.delete(`${API_URL}/health-records/${id}`);
+      toast.success('Record deleted');
+      fetchRecords();
+    } catch (err) {
+      toast.error('Failed to delete record');
     }
-  }
+  };
 
-  const handleDownload = async (record) => {
+  const handleAiSummary = async (record) => {
+    if (summaries[record.id]) {
+      // Toggle off if already exists
+      const newSummaries = { ...summaries };
+      delete newSummaries[record.id];
+      setSummaries(newSummaries);
+      return;
+    }
+
+    setSummarizingId(record.id);
     try {
-      const res = await axios.get(`/records/${record.id}/download`, {
-        responseType: 'blob',
-      })
-      const url = URL.createObjectURL(res.data)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = record.original_filename || `record_${record.id}`
-      a.click()
-      URL.revokeObjectURL(url)
-    } catch {
-      toast.error('Download failed')
-    }
-  }
+      const prompt = `Summarize this medical record in simple language for a patient:
+      Title: ${record.title}, Category: ${record.category}, Date: ${record.record_date},
+      Doctor: ${record.doctor_name || 'N/A'}, Notes: ${record.notes || 'N/A'}.
+      Give a 2-3 sentence plain English summary and flag anything that needs attention.`;
 
-  const openPreview = (record) => {
-    if (record.file_type === 'image') setPreviewRecord(record)
-    else handleDownload(record)
-  }
+      const res = await axios.post(`${API_URL}/chatbot/chat`, { message: prompt });
+      setSummaries({ ...summaries, [record.id]: res.data.response });
+    } catch (err) {
+      toast.error('AI Summary failed');
+    } finally {
+      setSummarizingId(null);
+    }
+  };
+
+  const filteredRecords = useMemo(() => {
+    let result = records.filter(r => {
+      const matchesSearch = r.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          (r.doctor_name && r.doctor_name.toLowerCase().includes(searchTerm.toLowerCase()));
+      const matchesCategory = activeCategory === 'all' || r.category === activeCategory;
+      return matchesSearch && matchesCategory;
+    });
+
+    return result.sort((a, b) => {
+      const dateA = new Date(a.record_date);
+      const dateB = new Date(b.record_date);
+      return sortOrder === 'desc' ? dateB - dateA : dateA - dateB;
+    });
+  }, [records, searchTerm, activeCategory, sortOrder]);
+
+  const stats = useMemo(() => {
+    const total = records.length;
+    const lastAdded = records.length > 0 ? records.sort((a,b) => new Date(b.created_at) - new Date(a.created_at))[0].record_date : 'N/A';
+    const labReports = records.filter(r => r.category === 'lab_report').length;
+    return { total, lastAdded, labReports };
+  }, [records]);
+
+  const formatDate = (dateStr) => {
+    return new Date(dateStr).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  };
 
   return (
-    <div className="min-h-screen pt-24 pb-10 px-4 max-w-5xl mx-auto">
-      {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-2xl shadow-lg">
-            📁
+    <div className="max-w-6xl mx-auto p-4 sm:p-6 space-y-8 animate-fade-in pt-8">
+      
+      {/* PAGE HEADER */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <div className="flex items-center gap-3">
+            <h1 className="text-3xl font-black text-slate-900 dark:text-white">Health Records</h1>
+            <span className="bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 px-3 py-1 rounded-full text-xs font-bold border border-red-200 dark:border-red-800">
+              {records.length} Records
+            </span>
           </div>
-          <div>
-            <h1 className="text-2xl font-bold text-primary">Medical Records</h1>
-            <p className="text-secondary text-sm">Securely upload and manage your hospital documents</p>
-          </div>
+          <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Manage your medical history, prescriptions, and reports securely.</p>
         </div>
-      </div>
-
-      {/* Upload Section */}
-      <div className="card mb-8">
-        <h2 className="text-lg font-bold text-primary mb-4 flex items-center gap-2">
-          <span>⬆️</span> Upload New Record
-        </h2>
-
-        {/* Drop Zone */}
-        <div
-          onClick={() => fileInputRef.current?.click()}
-          onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
-          onDragLeave={() => setDragOver(false)}
-          onDrop={handleDrop}
-          className={`relative border-2 border-dashed rounded-2xl p-10 text-center cursor-pointer transition-all duration-200 mb-4
-            ${dragOver ? 'border-indigo-400 bg-indigo-500/10' : 'border-slate-600 hover:border-indigo-500/60 hover:bg-slate-800/50'}
-            ${pendingFile ? 'border-green-500/60 bg-green-500/5' : ''}`}
+        <button 
+          onClick={() => setShowForm(!showForm)}
+          className="w-full sm:w-auto px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-lg active:scale-95"
         >
-          <input
-            ref={fileInputRef}
-            type="file"
-            className="hidden"
-            accept="image/*,.pdf,.doc,.docx,.txt"
-            onChange={(e) => handleFileSelect(e.target.files[0])}
-          />
-          {pendingFile ? (
-            <div className="flex flex-col items-center gap-2">
-              <div className="text-5xl">
-                {pendingFile.type.startsWith('image/') ? '🖼️' : pendingFile.type === 'application/pdf' ? '📄' : '📝'}
-              </div>
-              <p className="text-primary font-semibold">{pendingFile.name}</p>
-              <p className="text-secondary text-sm">{formatBytes(pendingFile.size)}</p>
-              <button
-                onClick={(e) => { e.stopPropagation(); setPendingFile(null); setUploadForm(f => ({ ...f, title: '' })) }}
-                className="text-red-400 text-xs hover:text-red-300 mt-1"
-              >
-                ✕ Remove
-              </button>
-            </div>
-          ) : (
-            <div className="flex flex-col items-center gap-3">
-              <div className="text-5xl opacity-60">🗂️</div>
-              <p className="text-primary font-semibold">Drag & drop your file here</p>
-              <p className="text-secondary text-sm">or <span className="text-indigo-400">click to browse</span></p>
-              <p className="text-secondary text-xs mt-1">Supports: JPG, PNG, PDF, DOC, TXT · Max 20MB</p>
-            </div>
-          )}
-        </div>
-
-        {/* Form fields */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-          <div>
-            <label className="block text-sm text-secondary mb-1">Title <span className="text-red-400">*</span></label>
-            <input
-              type="text"
-              placeholder="e.g. Blood Test Report - March 2025"
-              value={uploadForm.title}
-              onChange={(e) => setUploadForm(f => ({ ...f, title: e.target.value }))}
-              className="w-full bg-slate-800 border border-slate-600 rounded-xl px-4 py-2.5 text-primary placeholder-slate-500 focus:outline-none focus:border-indigo-500 text-sm"
-            />
-          </div>
-          <div>
-            <label className="block text-sm text-secondary mb-1">Description <span className="text-secondary">(optional)</span></label>
-            <input
-              type="text"
-              placeholder="e.g. Hemoglobin levels, annual checkup"
-              value={uploadForm.description}
-              onChange={(e) => setUploadForm(f => ({ ...f, description: e.target.value }))}
-              className="w-full bg-slate-800 border border-slate-600 rounded-xl px-4 py-2.5 text-primary placeholder-slate-500 focus:outline-none focus:border-indigo-500 text-sm"
-            />
-          </div>
-        </div>
-
-        <div className="mb-6">
-          <label className="block text-sm text-secondary mb-1">Issuing Doctor ID <span className="text-xs text-secondary">(Required for restricted certificates)</span></label>
-          <input
-            type="text"
-            placeholder="e.g. DOC456"
-            value={uploadForm.issuing_doctor_code}
-            onChange={(e) => setUploadForm(f => ({ ...f, issuing_doctor_code: e.target.value }))}
-            className="w-full bg-slate-800 border border-slate-600 rounded-xl px-4 py-2.5 text-primary placeholder-slate-500 focus:outline-none focus:border-indigo-500 text-sm"
-          />
-          <p className="text-[10px] text-secondary mt-1 italic">When provided, only you and the specified doctor can access this document.</p>
-        </div>
-
-        {/* Progress bar */}
-        {uploading && (
-          <div className="mb-4">
-            <div className="flex justify-between text-xs text-secondary mb-1">
-              <span>Uploading…</span><span>{uploadProgress}%</span>
-            </div>
-            <div className="w-full bg-slate-700 rounded-full h-2">
-              <div
-                className="bg-gradient-to-r from-indigo-500 to-purple-500 h-2 rounded-full transition-all duration-300"
-                style={{ width: `${uploadProgress}%` }}
-              />
-            </div>
-          </div>
-        )}
-
-        <button
-          onClick={handleUpload}
-          disabled={uploading || !pendingFile}
-          className="btn-primary w-full py-3 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {uploading ? (
-            <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Uploading…</>
-          ) : (
-            <><span>⬆️</span> Upload Record</>
-          )}
+          {showForm ? <XMarkIcon className="w-5 h-5" /> : <PlusIcon className="w-5 h-5" />}
+          {showForm ? 'Close Form' : 'Add Record'}
         </button>
       </div>
 
-      {/* Records List */}
-      <div>
-        <h2 className="text-lg font-bold text-primary mb-4 flex items-center gap-2">
-          <span>📋</span> My Records
-          <span className="ml-auto text-sm font-normal text-secondary">{records.length} file{records.length !== 1 ? 's' : ''}</span>
-        </h2>
+      {/* STATS ROW */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard title="Total Records" value={stats.total} icon={<QueueListIcon />} color="blue" />
+        <StatCard title="Last Added" value={formatDate(stats.lastAdded) === 'Invalid Date' ? stats.lastAdded : formatDate(stats.lastAdded)} icon={<CalendarDaysIcon />} color="emerald" />
+        <StatCard title="Lab Reports" value={stats.labReports} icon={<BeakerIcon />} color="purple" />
+        <StatCard title="Upcoming" value="0 scheduled" icon={<ClockIcon />} color="amber" isMuted />
+      </div>
 
-        {loading ? (
-          <div className="text-center py-16 text-secondary">
-            <div className="w-8 h-8 border-2 border-slate-600 border-t-indigo-500 rounded-full animate-spin mx-auto mb-3" />
-            Loading records…
+      {/* UPLOAD FORM (INLINE) */}
+      {showForm && (
+        <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl border-2 border-slate-100 dark:border-slate-700 shadow-2xl animate-slide-down overflow-hidden">
+          <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
+            <span className="p-2 bg-red-50 dark:bg-red-900/20 rounded-lg text-red-600">
+               <DocumentTextIcon className="w-5 h-5" />
+            </span>
+            New Health Record
+          </h2>
+          <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-4">
+              <div className="space-y-1">
+                <label className="text-xs font-black uppercase text-slate-500 tracking-wider">Record Title</label>
+                <input 
+                  required
+                  type="text" 
+                  value={formData.title}
+                  onChange={e => setFormData({...formData, title: e.target.value})}
+                  className="w-full p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900 border-none ring-1 ring-slate-200 dark:ring-slate-700 focus:ring-2 focus:ring-red-500 outline-none transition-all"
+                  placeholder="e.g. Annual Blood Work 2024"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-black uppercase text-slate-500 tracking-wider">Category</label>
+                  <select 
+                    value={formData.category}
+                    onChange={e => setFormData({...formData, category: e.target.value})}
+                    className="w-full p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900 border-none ring-1 ring-slate-200 dark:ring-slate-700 focus:ring-2 focus:ring-red-500 outline-none"
+                  >
+                    {CATEGORIES.filter(c => c.id !== 'all').map(c => (
+                      <option key={c.id} value={c.id}>{c.emoji} {c.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-black uppercase text-slate-500 tracking-wider">Record Date</label>
+                  <input 
+                    required
+                    type="date" 
+                    value={formData.record_date}
+                    onChange={e => setFormData({...formData, record_date: e.target.value})}
+                    className="w-full p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900 border-none ring-1 ring-slate-200 dark:ring-slate-700 focus:ring-2 focus:ring-red-500 outline-none"
+                  />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-black uppercase text-slate-500 tracking-wider">Doctor Name (Optional)</label>
+                <input 
+                  type="text" 
+                  value={formData.doctor_name}
+                  onChange={e => setFormData({...formData, doctor_name: e.target.value})}
+                  className="w-full p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900 border-none ring-1 ring-slate-200 dark:ring-slate-700 focus:ring-2 focus:ring-red-500 outline-none"
+                  placeholder="Dr. Sarah Johnson"
+                />
+              </div>
+            </div>
+            
+            <div className="space-y-4">
+               <div className="space-y-1">
+                <label className="text-xs font-black uppercase text-slate-500 tracking-wider">Medical Notes</label>
+                <textarea 
+                  rows={3}
+                  value={formData.notes}
+                  onChange={e => setFormData({...formData, notes: e.target.value})}
+                  className="w-full p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900 border-none ring-1 ring-slate-200 dark:ring-slate-700 focus:ring-2 focus:ring-red-500 outline-none resize-none"
+                  placeholder="Key findings or specific doctor instructions..."
+                />
+              </div>
+              
+              <div className="space-y-1">
+                <label className="text-xs font-black uppercase text-slate-500 tracking-wider">Attachment</label>
+                <div className="relative group">
+                   <input 
+                    type="file" 
+                    onChange={handleFileChange}
+                    accept=".pdf,.jpg,.jpeg,.png,.webp"
+                    className="hidden"
+                    id="file-upload"
+                  />
+                  <label 
+                    htmlFor="file-upload"
+                    className={`flex flex-col items-center justify-center p-6 border-2 border-dashed rounded-3xl cursor-pointer transition-all
+                      ${formData.file ? 'border-green-500 bg-green-50 dark:bg-green-900/10' : 'border-slate-300 dark:border-slate-600 group-hover:border-red-400 bg-slate-50 dark:bg-slate-900/50'}
+                    `}
+                  >
+                    {formData.file ? (
+                      <>
+                        <ShieldCheckIcon className="w-10 h-10 text-green-500 mb-2" />
+                        <span className="font-bold text-slate-800 dark:text-white truncate max-w-xs">{formData.file.name}</span>
+                        <span className="text-xs text-slate-500">{(formData.file.size / 1024 / 1024).toFixed(2)} MB</span>
+                      </>
+                    ) : (
+                      <>
+                        <PlusIcon className="w-10 h-10 text-slate-400 group-hover:text-red-500 mb-2 transition-colors" />
+                        <span className="font-bold text-slate-600 dark:text-slate-400">Click to upload file</span>
+                        <span className="text-xs text-slate-500 mt-1">PDF, JPG, PNG (Max 10MB)</span>
+                      </>
+                    )}
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <div className="md:col-span-2 pt-4 flex gap-4">
+               <button 
+                  type="submit"
+                  className="flex-1 bg-red-600 hover:bg-red-700 text-white p-4 rounded-2xl font-black text-lg transition-all shadow-xl hover:-translate-y-1"
+                >
+                  Save Healthcare Record
+                </button>
+                <button 
+                  type="button"
+                  onClick={() => setShowForm(false)}
+                  className="px-8 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 p-4 rounded-2xl font-bold transition-all text-slate-700 dark:text-white"
+                >
+                  Cancel
+                </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* FILTER BAR */}
+      <div className="space-y-4">
+        <div className="flex flex-col md:flex-row gap-4">
+          <div className="relative flex-1 group">
+            <MagnifyingGlassIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-red-500 transition-colors" />
+            <input 
+              type="text" 
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              placeholder="Search by report title or doctor..."
+              className="w-full pl-12 pr-4 py-4 rounded-2xl bg-white dark:bg-slate-800 border-none ring-1 ring-slate-200 dark:ring-slate-700 focus:ring-2 focus:ring-red-500 shadow-sm"
+            />
           </div>
-        ) : records.length === 0 ? (
-          <div className="card text-center py-16">
-            <div className="text-5xl mb-4 opacity-40">📂</div>
-            <p className="text-primary font-semibold">No records yet</p>
-            <p className="text-secondary text-sm mt-1">Upload your first medical document above</p>
+          <div className="flex gap-2">
+            <button 
+              onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')}
+              className="px-6 py-4 bg-white dark:bg-slate-800 border-none ring-1 ring-slate-200 dark:ring-slate-700 rounded-2xl font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all shadow-sm"
+            >
+              <FunnelIcon className="w-5 h-5" />
+              {sortOrder === 'desc' ? 'Newest First' : 'Oldest First'}
+            </button>
+          </div>
+        </div>
+
+        {/* CATEGORY TABS */}
+        <div className="flex overflow-x-auto pb-2 gap-2 scrollbar-hide">
+          {CATEGORIES.map(cat => (
+            <button
+              key={cat.id}
+              onClick={() => setActiveCategory(cat.id)}
+              className={`px-5 py-2.5 rounded-full font-bold whitespace-nowrap flex items-center gap-2 transition-all border-2
+                ${activeCategory === cat.id 
+                  ? 'bg-red-600 border-red-600 text-white shadow-lg' 
+                  : 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-red-200'}
+              `}
+            >
+              {cat.icon}
+              {cat.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* RECORDS LIST */}
+      <div className="space-y-4 relative">
+        {loading ? (
+             <div className="grid grid-cols-1 gap-4">
+                {[1, 2, 3].map(i => (
+                  <div key={i} className="h-32 bg-white dark:bg-slate-800 rounded-3xl animate-pulse border border-slate-100 dark:border-slate-700" />
+                ))}
+             </div>
+        ) : filteredRecords.length === 0 ? (
+          <div className="bg-slate-50 dark:bg-slate-800/50 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-[40px] p-20 text-center space-y-6">
+            <div className="inline-flex p-8 rounded-full bg-red-50 dark:bg-red-900/20 text-red-600">
+               <DocumentTextIcon className="w-16 h-16 opacity-40" />
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-2xl font-black text-slate-900 dark:text-white">No health records yet</h3>
+              <p className="text-slate-500 dark:text-slate-400 max-w-sm mx-auto text-sm italic">Add your first record above. Store lab reports, prescriptions, scans and more securely.</p>
+            </div>
+            <button 
+              onClick={() => setShowForm(true)}
+              className="px-10 py-4 bg-red-600 hover:bg-red-700 text-white rounded-2xl font-black shadow-xl transition-all active:scale-95"
+            >
+              + Create First Record
+            </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {records.map((record) => (
-              <div
-                key={record.id}
-                className={`card bg-gradient-to-br ${FILE_TYPE_COLORS[record.file_type] || FILE_TYPE_COLORS.document} hover:scale-[1.01] transition-all duration-200`}
-              >
-                <div className="flex items-start gap-3">
-                  <div className="text-3xl flex-shrink-0">{FILE_TYPE_ICONS[record.file_type] || '📎'}</div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-primary font-semibold truncate">{record.title}</p>
-                    {record.description && (
-                      <p className="text-secondary text-xs mt-0.5 truncate">{record.description}</p>
-                    )}
-                    <div className="flex items-center gap-3 mt-1.5">
-                      <span className="text-xs text-secondary">{formatBytes(record.file_size)}</span>
-                      <span className="text-secondary">·</span>
-                      <span className="text-xs text-secondary">
-                        {new Date(record.uploaded_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2 mt-3">
-                      <button
-                        onClick={() => openPreview(record)}
-                        className="flex-1 text-center py-1.5 px-3 bg-white/10 hover:bg-white/20 text-primary text-xs font-medium rounded-lg transition-colors"
-                      >
-                        {record.file_type === 'image' ? '👁️ Preview' : '⬇️ Download'}
-                      </button>
-                      <button
-                        onClick={() => handleDownload(record)}
-                        className="py-1.5 px-3 bg-white/10 hover:bg-white/20 text-primary text-xs font-medium rounded-lg transition-colors"
-                      >
-                        ⬇️
-                      </button>
-                      <button
-                        onClick={() => handleDelete(record.id)}
-                        className="py-1.5 px-3 bg-red-500/20 hover:bg-red-500/40 text-red-300 text-xs font-medium rounded-lg transition-colors"
-                      >
-                        🗑️
-                      </button>
+          <div className="space-y-4 relative">
+             {/* Timeline Line */}
+             <div className="absolute left-[27px] top-6 bottom-6 w-0.5 bg-slate-200 dark:bg-slate-700 hidden md:block" />
+             
+             {filteredRecords.map(record => (
+                <div key={record.id} className="relative pl-0 md:pl-16 group transition-all">
+                  {/* Timeline Dot */}
+                  <div className={`absolute left-0 top-8 w-14 h-14 rounded-full border-4 border-white dark:border-slate-950 flex items-center justify-center text-2xl shadow-md z-10 transition-transform group-hover:scale-110 hidden md:flex
+                    ${CATEGORY_STYLES[record.category]?.bg}
+                  `}>
+                    {CATEGORIES.find(c => c.id === record.category)?.emoji}
+                  </div>
+
+                  <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-sm hover:shadow-xl transition-all group-hover:border-red-500/30 overflow-hidden">
+                    <div className="flex flex-col lg:flex-row justify-between gap-6">
+                      <div className="flex-1 space-y-3">
+                        <div className="flex flex-wrap items-center gap-2">
+                           <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border ${CATEGORY_STYLES[record.category]?.bg} ${CATEGORY_STYLES[record.category]?.text} ${CATEGORY_STYLES[record.category]?.border}`}>
+                              {record.category.replace('_', ' ')}
+                           </span>
+                           <h4 className="text-xl font-black text-slate-900 dark:text-white tracking-tight leading-tight">{record.title}</h4>
+                        </div>
+                        
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+                           <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 font-bold">
+                              <CalendarDaysIcon className="w-4 h-4 text-red-500" />
+                              {formatDate(record.record_date)}
+                           </div>
+                           {record.doctor_name && (
+                             <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 font-bold">
+                               <UserIcon className="w-4 h-4 text-blue-500" />
+                               {record.doctor_name}
+                             </div>
+                           )}
+                        </div>
+
+                        {record.notes && (
+                          <p className="text-slate-500 dark:text-slate-400 text-sm italic line-clamp-2 leading-relaxed bg-slate-50 dark:bg-slate-900/40 p-3 rounded-xl border-l-4 border-slate-300 dark:border-slate-600">
+                            "{record.notes}"
+                          </p>
+                        )}
+                        
+                        {/* AI SUMMARY SECTION */}
+                        {summaries[record.id] && (
+                          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/50 p-4 rounded-2xl animate-fade-in relative">
+                            <button 
+                              onClick={() => {
+                                const newS = {...summaries};
+                                delete newS[record.id];
+                                setSummaries(newS);
+                              }}
+                              className="absolute top-2 right-2 text-blue-400 hover:text-blue-600"
+                            >
+                              <XMarkIcon className="w-4 h-4" />
+                            </button>
+                            <div className="flex gap-3">
+                              <SparklesIcon className="w-5 h-5 text-blue-600 flex-shrink-0 mt-1" />
+                              <div className="space-y-1">
+                                <span className="text-[10px] font-black uppercase text-blue-600 tracking-widest">AI Clinical Insight</span>
+                                <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-medium">
+                                  {summaries[record.id]}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex flex-row lg:flex-col items-center justify-end gap-3 flex-shrink-0">
+                         {record.file_name && (
+                           <>
+                            <a 
+                              href={`${API_URL}/health-records/${record.id}/file`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="p-3 bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-400 rounded-2xl hover:bg-blue-600 hover:text-white transition-all shadow-sm border border-slate-100 dark:border-slate-700 group/btn flex items-center gap-2"
+                              title="View File"
+                            >
+                              <EyeIcon className="w-5 h-5" />
+                              <span className="text-xs font-bold lg:hidden">View</span>
+                            </a>
+                            <a 
+                              href={`${API_URL}/health-records/${record.id}/file`}
+                              download={record.file_name}
+                              className="p-3 bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-400 rounded-2xl hover:bg-emerald-600 hover:text-white transition-all shadow-sm border border-slate-100 dark:border-slate-700 flex items-center gap-2"
+                              title="Download"
+                            >
+                              <ArrowDownTrayIcon className="w-5 h-5" />
+                              <span className="text-xs font-bold lg:hidden">Download</span>
+                            </a>
+                           </>
+                         )}
+                         <button 
+                          onClick={() => handleAiSummary(record)}
+                          disabled={summarizingId === record.id}
+                          className={`p-3 rounded-2xl transition-all shadow-sm border flex items-center gap-2
+                            ${summaries[record.id] 
+                              ? 'bg-blue-600 text-white border-blue-600' 
+                              : 'bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-400 border-slate-100 dark:border-slate-700 hover:bg-blue-50 dark:hover:bg-blue-900/40 hover:text-blue-600'}
+                          `}
+                          title="Generate AI Summary"
+                        >
+                          {summarizingId === record.id ? (
+                            <div className="w-5 h-5 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+                          ) : (
+                            <SparklesIcon className="w-5 h-5" />
+                          )}
+                          <span className="text-xs font-bold lg:hidden">AI Summary</span>
+                        </button>
+                        <button 
+                          onClick={() => handleDelete(record.id)}
+                          className="p-3 bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-400 rounded-2xl hover:bg-red-600 hover:text-white transition-all shadow-sm border border-slate-100 dark:border-slate-700 flex items-center gap-2"
+                          title="Delete Record"
+                        >
+                          <TrashIcon className="w-5 h-5" />
+                          <span className="text-xs font-bold lg:hidden">Delete</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
+             ))}
           </div>
         )}
       </div>
-
-      {/* Image Preview Modal */}
-      {previewRecord && (
-        <div
-          className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-          onClick={() => setPreviewRecord(null)}
-        >
-          <div className="relative max-w-3xl w-full" onClick={(e) => e.stopPropagation()}>
-            <button
-              onClick={() => setPreviewRecord(null)}
-              className="absolute -top-4 -right-4 w-10 h-10 bg-slate-800 border border-slate-600 rounded-full text-primary hover:bg-slate-700 flex items-center justify-center z-10"
-            >
-              ✕
-            </button>
-            <div className="card p-4">
-              <p className="text-primary font-semibold mb-3">{previewRecord.title}</p>
-              <img
-                src={`/records/${previewRecord.id}/download`}
-                alt={previewRecord.title}
-                className="w-full rounded-xl max-h-[70vh] object-contain"
-                onError={(e) => { e.target.src = '' }}
-              />
-              <button
-                onClick={() => handleDownload(previewRecord)}
-                className="btn-primary w-full mt-3 py-2.5 flex items-center justify-center gap-2 text-sm"
-              >
-                ⬇️ Download Full Image
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
-  )
+  );
+}
+
+function StatCard({ title, value, icon, color, isMuted = false }) {
+  const colors = {
+    blue: 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 border-blue-100 dark:border-blue-800',
+    emerald: 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 border-emerald-100 dark:border-emerald-800',
+    purple: 'bg-purple-50 dark:bg-purple-900/20 text-purple-600 border-purple-100 dark:border-purple-800',
+    amber: 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 border-amber-100 dark:border-amber-800',
+  };
+
+  return (
+    <div className={`p-4 rounded-3xl border shadow-sm transition-all hover:shadow-md ${isMuted ? 'opacity-60' : ''} ${colors[color]}`}>
+      <div className="flex items-center gap-3">
+        <div className="w-8 h-8 flex-shrink-0">
+          {icon}
+        </div>
+        <div>
+          <p className="text-[10px] font-black uppercase tracking-widest opacity-70 leading-none mb-1">{title}</p>
+          <p className="text-lg font-black tracking-tight">{value}</p>
+        </div>
+      </div>
+    </div>
+  );
 }

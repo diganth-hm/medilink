@@ -287,55 +287,35 @@ export default function Login() {
         
         {/* LOGIN FORM VIEW */}
         <div className={`transition-all duration-500 transform ${step === 'form' ? 'translate-y-0 opacity-100 scale-100 pointer-events-auto' : '-translate-y-full opacity-0 scale-95 pointer-events-none absolute inset-0'}`}>
-          <div className="text-center mb-8">
-            <div className="w-16 h-16 bg-gradient-to-br from-primary to-slate-800 rounded-2xl flex items-center justify-center mx-auto mb-4 text-3xl shadow-xl">🏥</div>
-            <h1 className="text-3xl font-bold text-primary mb-2">Welcome Back</h1>
-            <p className="text-secondary">Sign in to your MediLink account</p>
+          <div className="text-center mb-8 animate-in fade-in slide-in-from-top-4 duration-500">
+            <div className="w-16 h-16 bg-gradient-to-br from-red-600 to-red-800 rounded-2xl flex items-center justify-center mx-auto mb-6 text-3xl shadow-2xl shadow-red-500/20">🏥</div>
+            <h1 className="text-4xl font-black text-slate-900 dark:text-white mb-2 tracking-tight">Welcome Back</h1>
+            <p className="text-slate-500 dark:text-slate-400 font-medium">Sign in to your MediLink account</p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-5 bg-[var(--bg-card)] p-6 rounded-2xl border border-[var(--border)] shadow-xl relative z-10 w-full mb-8">
+          <form onSubmit={handleSubmit} className="space-y-6 bg-white dark:bg-slate-800/80 backdrop-blur-xl p-8 rounded-[2.5rem] border border-slate-200 dark:border-slate-700/50 shadow-2xl shadow-slate-200/50 dark:shadow-none relative z-10 w-full mb-8">
             
             {/* FEATURE 1: TWO PILL BUTTONS */}
-            <div style={{
-              background: 'var(--bg-card)',
-              border: '1px solid var(--border)',
-              borderRadius: '999px',
-              padding: '4px',
-              display: 'flex'
-            }} className="mb-6">
+            <div className="bg-slate-100 dark:bg-slate-900/50 p-1.5 rounded-2xl flex mb-6">
               <button
                 type="button"
                 onClick={() => setLoginMethod('email')}
-                style={{
-                  flex: 1,
-                  padding: '8px 20px',
-                  borderRadius: '999px',
-                  fontSize: '14px',
-                  fontWeight: 500,
-                  cursor: 'pointer',
-                  background: loginMethod === 'email' ? '#E5341A' : 'transparent',
-                  color: loginMethod === 'email' ? '#FFFFFF' : 'var(--text-secondary)',
-                  transition: 'all 0.2s ease',
-                  border: 'none',
-                }}
+                className={`flex-1 py-3 px-6 rounded-xl text-sm font-bold transition-all duration-300 ${
+                  loginMethod === 'email' 
+                    ? 'bg-red-600 text-white shadow-lg shadow-red-500/30' 
+                    : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                }`}
               >
                 Email
               </button>
               <button
                 type="button"
                 onClick={() => setLoginMethod('phone')}
-                style={{
-                  flex: 1,
-                  padding: '8px 20px',
-                  borderRadius: '999px',
-                  fontSize: '14px',
-                  fontWeight: 500,
-                  cursor: 'pointer',
-                  background: loginMethod === 'phone' ? '#E5341A' : 'transparent',
-                  color: loginMethod === 'phone' ? '#FFFFFF' : 'var(--text-secondary)',
-                  transition: 'all 0.2s ease',
-                  border: 'none',
-                }}
+                className={`flex-1 py-3 px-6 rounded-xl text-sm font-bold transition-all duration-300 ${
+                  loginMethod === 'phone' 
+                    ? 'bg-red-600 text-white shadow-lg shadow-red-500/30' 
+                    : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                }`}
               >
                 Phone Number
               </button>
@@ -345,7 +325,7 @@ export default function Login() {
               <div>
                 <input
                   type="email"
-                  className="w-full px-4 py-3 bg-[var(--dark)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] focus:outline-none focus:border-[#E5341A]"
+                  className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl text-slate-900 dark:text-white font-medium focus:outline-none focus:ring-2 focus:ring-red-500/50 transition-all placeholder-slate-400"
                   placeholder="you@example.com"
                   value={emailValue}
                   onChange={e => setEmailValue(e.target.value)}
@@ -420,10 +400,10 @@ export default function Login() {
 
           {/* Quick Demo REMOVED (Feature 3) */}
 
-          <div className="mt-8 pt-6 border-t border-[var(--border)] text-center">
-            <p className="text-[var(--text-secondary)]">
+          <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-700 text-center">
+            <p className="text-slate-500 dark:text-slate-400 font-medium">
               Don't have an account?{' '}
-              <Link to="/register" className="text-[#E5341A] hover:text-[#E5341A] font-medium transition-colors">
+              <Link to="/register" className="text-red-600 hover:text-red-700 font-black transition-colors underline decoration-2 underline-offset-4">
                 Register
               </Link>
             </p>

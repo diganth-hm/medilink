@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, Text, DateTime, ForeignKey, Float
+from sqlalchemy import Column, Integer, String, Boolean, Text, DateTime, ForeignKey, Float, JSON, LargeBinary
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from database import Base
@@ -16,6 +16,7 @@ class User(Base):
     biometric_template = Column(Text, nullable=True)
     medilink_id = Column(String(20), unique=True, nullable=True, index=True)
     is_verified = Column(Boolean, default=False)  # True for verified doctors
+    preferences = Column(JSON, nullable=True) # notifications_appointments, notifications_refills, etc.
     created_at = Column(DateTime, default=datetime.utcnow)
 
     medical_profile = relationship("MedicalProfile", back_populates="user", uselist=False)
@@ -46,6 +47,7 @@ class MedicalProfile(Base):
 
     doctor_name = Column(String(100), nullable=True)
     doctor_phone = Column(String(20), nullable=True)
+    emergency_contacts = Column(JSON, default=[]) # Stored as JSON array
 
     has_pacemaker = Column(Boolean, default=False)
     has_implants = Column(Boolean, default=False)
@@ -57,6 +59,66 @@ class MedicalProfile(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     user = relationship("User", back_populates="medical_profile")
+
+
+class HealthRecord(Base):
+    __tablename__ = "health_records"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    title = Column(String(200), nullable=False)
+    category = Column(String(50), nullable=False) # lab_report | prescription | scan | vaccination | surgery | other
+    record_date = Column(String(20), nullable=False)
+    doctor_name = Column(String(100), nullable=True)
+    notes = Column(Text, nullable=True)
+    file_name = Column(String(255), nullable=True)
+    file_data = Column(LargeBinary, nullable=True)
+    file_type = Column(String(100), nullable=True) # mime type
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User", backref="health_records")
+
+
+class Appointment(Base):
+    __tablename__ = "appointments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    doctor_name = Column(String(100), nullable=False)
+    specialty = Column(String(100), nullable=True)
+    clinic_or_hospital = Column(String(200), nullable=True)
+    appointment_date = Column(String(20), nullable=False) # Store as "YYYY-MM-DD"
+    appointment_time = Column(String(20), nullable=False) # Store as "HH:MM"
+    type = Column(String(20), nullable=False) # in_person | video | phone
+    reason = Column(String(500), nullable=True)
+    notes = Column(Text, nullable=True)
+    status = Column(String(20), default="upcoming") # upcoming | completed | cancelled | missed
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User", backref="appointments")
+
+
+class Prescription(Base):
+    __tablename__ = "prescriptions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    drug_name = Column(String(100), nullable=False)
+    dosage = Column(String(50), nullable=False)
+    frequency = Column(String(50), nullable=False) # once_daily, twice_daily, etc.
+    prescribed_by = Column(String(100), nullable=True)
+    start_date = Column(String(20), nullable=False)
+    end_date = Column(String(20), nullable=True) # None means ongoing
+    total_quantity = Column(Integer, nullable=True)
+    remaining_quantity = Column(Integer, nullable=True)
+    instructions = Column(String(500), nullable=True)
+    is_active = Column(Boolean, default=True)
+    file_name = Column(String(200), nullable=True)
+    file_data = Column(LargeBinary, nullable=True)
+    file_type = Column(String(100), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User", backref="prescriptions")
 
 
 class QRCode(Base):
@@ -147,3 +209,14 @@ class FundraisingApplication(Base):
     description = Column(Text)
     status = Column(String(20), default="pending")  # pending | verified | rejected
     created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class AccessLog(Base):
+    __tablename__ = "access_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    scanned_at = Column(DateTime, default=datetime.utcnow)
+    location = Column(String(255), nullable=True)
+
+    user = relationship("User", backref="access_logs")

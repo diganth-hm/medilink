@@ -89,17 +89,17 @@ export default function AnimatedBackground() {
         }
 
         /* ── Layer 1: Grid ────────────────────────────────────────────── */
+        /* Default (Light) */
         .ml-bg-grid {
+          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Cpath d='M 40 0 L 0 0 0 40' fill='none' stroke='%23DDE3EF' stroke-width='0.5'/%3E%3C/svg%3E");
           position: absolute;
           inset: 0;
-          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Cpath d='M 40 0 L 0 0 0 40' fill='none' stroke='%231a2a45' stroke-width='0.5'/%3E%3C/svg%3E");
           background-repeat: repeat;
           animation: ml-gridDrift 8s linear infinite;
-          opacity: 1;
         }
 
-        [data-theme="light"] .ml-bg-grid {
-          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Cpath d='M 40 0 L 0 0 0 40' fill='none' stroke='%23DDE3EF' stroke-width='0.5'/%3E%3C/svg%3E");
+        .dark .ml-bg-grid {
+          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Cpath d='M 40 0 L 0 0 0 40' fill='none' stroke='%231a2a45' stroke-width='0.5'/%3E%3C/svg%3E");
         }
 
         @keyframes ml-gridDrift {
@@ -117,31 +117,31 @@ export default function AnimatedBackground() {
         .ml-orb-1 {
           width: 600px; height: 600px;
           top: -200px; left: -200px;
-          background: radial-gradient(circle, rgba(229,52,26,0.04) 0%, transparent 70%);
           animation: ml-floatOrb 12s ease-in-out infinite;
+          background: radial-gradient(circle, rgba(229,52,26,0.05) 0%, transparent 70%);
         }
         .ml-orb-2 {
           width: 500px; height: 500px;
           bottom: -100px; right: -100px;
-          background: radial-gradient(circle, rgba(29,158,117,0.03) 0%, transparent 70%);
           animation: ml-floatOrb 16s ease-in-out infinite reverse;
+          background: radial-gradient(circle, rgba(85,102,170,0.04) 0%, transparent 70%);
         }
         .ml-orb-3 {
           width: 300px; height: 300px;
           top: 40%; left: 60%;
-          background: radial-gradient(circle, rgba(229,52,26,0.03) 0%, transparent 70%);
           animation: ml-floatOrb 10s ease-in-out infinite 3s;
+          background: radial-gradient(circle, rgba(10,22,40,0.03) 0%, transparent 70%);
         }
 
-        /* Light-theme orbs */
-        [data-theme="light"] .ml-orb-1 {
-          background: radial-gradient(circle, rgba(229,52,26,0.05) 0%, transparent 70%);
+        /* Dark orbs */
+        .dark .ml-orb-1 {
+          background: radial-gradient(circle, rgba(229,52,26,0.04) 0%, transparent 70%);
         }
-        [data-theme="light"] .ml-orb-2 {
-          background: radial-gradient(circle, rgba(85,102,170,0.04) 0%, transparent 70%);
+        .dark .ml-orb-2 {
+          background: radial-gradient(circle, rgba(29,158,117,0.03) 0%, transparent 70%);
         }
-        [data-theme="light"] .ml-orb-3 {
-          background: radial-gradient(circle, rgba(10,22,40,0.03) 0%, transparent 70%);
+        .dark .ml-orb-3 {
+          background: radial-gradient(circle, rgba(229,52,26,0.03) 0%, transparent 70%);
         }
 
         @keyframes ml-floatOrb {
@@ -164,14 +164,14 @@ export default function AnimatedBackground() {
           stroke-width: 1.5;
           stroke-linecap: round;
           stroke-linejoin: round;
-          opacity: 0.06;
+          opacity: 0.12; /* Brighter in light */
           stroke-dasharray: 1800;
           stroke-dashoffset: 1800;
           animation: ml-ecgScroll 4s linear infinite;
         }
 
-        [data-theme="light"] .ml-ecg-line {
-          opacity: 0.09;
+        .dark .ml-ecg-line {
+          opacity: 0.06;
         }
 
         @keyframes ml-ecgScroll {
@@ -180,19 +180,21 @@ export default function AnimatedBackground() {
         }
 
         /* ── Layer 4: Dot particles ───────────────────────────────────── */
+        /* Default (Light) dots */
         .ml-dot {
           position: absolute;
           width: 2px;
           height: 2px;
           border-radius: 50%;
-          background: #E5341A;
-          opacity: 0.1;
+          background: #5566AA;
+          opacity: 0.12;
           animation: ml-dotPulse var(--dot-dur, 4s) ease-in-out infinite var(--dot-delay, 0s);
         }
 
-        [data-theme="light"] .ml-dot {
-          background: #5566AA;
-          opacity: 0.08;
+        /* Dark dots */
+        .dark .ml-dot {
+          background: #E5341A;
+          opacity: 0.1;
         }
 
         @keyframes ml-dotPulse {

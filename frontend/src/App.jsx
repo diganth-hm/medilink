@@ -16,7 +16,9 @@ import QRCodePage from './pages/QRCodePage'
 import ScanQR from './pages/ScanQR'
 import EmergencyView from './pages/EmergencyView'
 import Chatbot from './pages/Chatbot'
+import Appointments from './pages/Appointments'
 import MedicalRecords from './pages/MedicalRecords'
+import Prescriptions from './pages/Prescriptions'
 import EmergencyPage from './pages/emergency/[token]'
 import Fundraising from './pages/Fundraising'
 import NearbyHospitals from './pages/NearbyHospitals'
@@ -27,6 +29,7 @@ import BiometricEnroll from './pages/BiometricEnroll'
 import DoctorVerification from './pages/DoctorVerification'
 import PublicFundraising from './pages/PublicFundraising'
 import Settings from './pages/Settings'
+import EmergencyContacts from './pages/EmergencyContacts'
 
 import { useEffect } from 'react'
 import { API_URL } from './config'
@@ -107,7 +110,7 @@ export default function App() {
             error: { iconTheme: { primary: '#ef4444', secondary: '#fff' } },
           }}
         />
-        <div className="min-h-screen flex flex-col relative z-20">
+        <div className="min-h-screen flex flex-col relative z-20 pt-16 bg-slate-50 dark:bg-slate-900 transition-colors duration-300">
           <div className="flex-1 pb-16">
           <Routes>
           {/* Public routes */}
@@ -124,10 +127,10 @@ export default function App() {
           <Route path="/dashboard/profile" element={<ProtectedRoute><MedicalProfile /></ProtectedRoute>} />
           <Route path="/dashboard/qr-code" element={<ProtectedRoute><QRCodePage /></ProtectedRoute>} />
           <Route path="/dashboard/medical-card" element={<ProtectedRoute><MedicalIDCard /></ProtectedRoute>} />
-          <Route path="/dashboard/emergency-contacts" element={<ProtectedRoute><PlaceholderPage title="Emergency Contacts" /></ProtectedRoute>} />
+          <Route path="/dashboard/emergency-contacts" element={<ProtectedRoute><EmergencyContacts /></ProtectedRoute>} />
           <Route path="/dashboard/health-records" element={<ProtectedRoute><MedicalRecords /></ProtectedRoute>} />
-          <Route path="/dashboard/appointments" element={<ProtectedRoute><PlaceholderPage title="Appointments" /></ProtectedRoute>} />
-          <Route path="/dashboard/prescriptions" element={<ProtectedRoute><PlaceholderPage title="Prescriptions" /></ProtectedRoute>} />
+          <Route path="/dashboard/appointments" element={<ProtectedRoute><Appointments /></ProtectedRoute>} />
+          <Route path="/dashboard/prescriptions" element={<ProtectedRoute><Prescriptions /></ProtectedRoute>} />
           <Route path="/dashboard/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
           
           {/* Other nested protected routes */}

@@ -8,9 +8,11 @@ export default function Dashboard() {
   const { user } = useAuth()
   const [profile, setProfile] = useState(null)
   const [doctorProfile, setDoctorProfile] = useState(null)
-  const [qrInfo, setQrInfo] = useState(null)
+  const [appointments, setAppointments] = useState([])
+  const [dismissedAppt, setDismissedAppt] = useState(false)
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
+  const [qrInfo, setQrInfo] = useState(null)
 
   useEffect(() => {
     const fetchData = async () => {
@@ -36,6 +38,8 @@ export default function Dashboard() {
       }
     }
     fetchData()
+    // Fetch appointments for reminder
+    axios.get('/appointments').then(res => setAppointments(res.data)).catch(() => {})
   }, [user])
 
   const handleFileUpload = async (e) => {
@@ -101,7 +105,8 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen pt-24 pb-10 px-4 max-w-5xl mx-auto">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 pt-8 pb-10 px-4">
+      <div className="max-w-5xl mx-auto">
       {/* Welcome */}
       <div className="mb-10">
         <div className="flex items-center gap-3 mb-2">
@@ -109,12 +114,52 @@ export default function Dashboard() {
             {user?.name?.[0]?.toUpperCase()}
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-primary">Welcome, {user?.name}!</h1>
+            <h1 className="text-2xl font-black text-slate-900 dark:text-white">Welcome, {user?.name}!</h1>
             <span className="badge-blue capitalize">{user?.role}</span>
           </div>
         </div>
-        <p className="text-secondary mt-2 ml-15">Manage your emergency medical profile</p>
+        <p className="text-slate-500 dark:text-slate-400 mt-2 ml-15">Manage your emergency medical profile</p>
       </div>
+
+      {/* Appointment Reminder Banner */}
+      {(() => {
+        const todayStr = new Date().toISOString().split('T')[0];
+        const tomorrowStr = new Date(new Date().getTime() + 86400000).toISOString().split('T')[0];
+        const upcoming = appointments.find(a => 
+          a.status === 'upcoming' && (a.appointment_date === todayStr || a.appointment_date === tomorrowStr)
+        );
+        
+        if (upcoming && !dismissedAppt) {
+          const isToday = upcoming.appointment_date === todayStr;
+          return (
+            <div className="mb-8 p-5 bg-gradient-to-r from-amber-500/20 to-orange-600/10 border border-amber-500/30 rounded-3xl flex items-center justify-between gap-4 animate-slide-down shadow-lg">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-amber-500 rounded-2xl flex items-center justify-center text-2xl shadow-inner">🗓️</div>
+                <div>
+                  <h4 className="font-black text-amber-600 dark:text-amber-400 uppercase tracking-tighter text-sm">
+                    Appointment Reminder
+                  </h4>
+                  <p className="text-slate-800 dark:text-slate-200 font-bold">
+                    You have a visit with <span className="text-blue-600 underline decoration-2 underline-offset-4">Dr. {upcoming.doctor_name}</span> {isToday ? 'today' : 'tomorrow'} at {upcoming.appointment_time}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Link to="/dashboard/appointments" className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-black shadow-md transition-all whitespace-nowrap">
+                   VIEW DETAILS
+                </Link>
+                <button 
+                  onClick={() => setDismissedAppt(true)}
+                  className="p-2 text-amber-600 hover:bg-amber-500 hover:text-white rounded-xl transition-all"
+                >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+              </div>
+            </div>
+          );
+        }
+        return null;
+      })()}
 
       {user?.role === 'doctor' && (
         <div className={`mb-8 p-6 rounded-3xl border ${
@@ -168,9 +213,9 @@ export default function Dashboard() {
             <div className="flex items-start gap-3">
               <div className="text-3xl">{s.icon}</div>
               <div>
-                <p className="text-xs text-secondary uppercase tracking-wider">{s.label}</p>
-                <p className="text-2xl font-bold text-primary">{s.value}</p>
-                <p className="text-xs text-secondary mt-0.5">{s.sub}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">{s.label}</p>
+                <p className="text-2xl font-black text-slate-900 dark:text-white">{s.value}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{s.sub}</p>
               </div>
             </div>
           </Link>
@@ -178,7 +223,7 @@ export default function Dashboard() {
       </div>
 
       {/* Quick Actions */}
-      <h2 className="text-xl font-bold text-primary mb-4">Quick Actions</h2>
+      <h2 className="text-xl font-black text-slate-900 dark:text-white mb-4">Quick Actions</h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
         {[
           {
@@ -254,13 +299,13 @@ export default function Dashboard() {
             gradient: 'from-cyan-600 to-teal-700',
           },
         ].map((action, i) => (
-          <div key={i} className="card-hover flex flex-col">
-            <div className="text-4xl mb-3">{action.icon}</div>
-            <h3 className="font-bold text-primary mb-2">{action.title}</h3>
-            <p className="text-secondary text-sm flex-1 mb-4">{action.desc}</p>
+          <div key={i} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700/50 rounded-2xl p-6 flex flex-col hover:scale-[1.02] hover:shadow-xl transition-all duration-300">
+            <div className="text-4xl mb-4">{action.icon}</div>
+            <h3 className="font-bold text-slate-900 dark:text-white mb-2">{action.title}</h3>
+            <p className="text-slate-500 dark:text-slate-400 text-sm flex-1 mb-6">{action.desc}</p>
             <Link
               to={action.link}
-              className={`inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-gradient-to-r ${action.gradient} text-primary font-semibold text-sm hover:opacity-90 transition-opacity`}
+              className={`inline-flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-gradient-to-r ${action.gradient} text-white font-black text-sm hover:opacity-90 transition-opacity shadow-lg`}
             >
               {action.btn} →
             </Link>
@@ -273,9 +318,9 @@ export default function Dashboard() {
         <div className="flex items-start gap-4">
           <div className="text-4xl">🚨</div>
           <div>
-            <h3 className="text-lg font-bold text-primary mb-1">Emergency Responder Tools</h3>
-            <p className="text-secondary text-sm mb-4">Scan a patient's QR code to instantly access their medical information — no login required</p>
-            <Link to="/scan" className="btn-danger text-sm px-5 py-2.5 inline-flex items-center gap-2">
+            <h3 className="text-lg font-black text-slate-900 dark:text-white mb-1">Emergency Responder Tools</h3>
+            <p className="text-slate-500 dark:text-slate-400 text-sm mb-4">Scan a patient's QR code to instantly access their medical information — no login required</p>
+            <Link to="/scan" className="bg-red-600 hover:bg-red-500 text-white font-black text-sm px-6 py-3 rounded-xl inline-flex items-center gap-2 shadow-xl shadow-red-900/40 transition-all active:scale-95">
               📷 Scan Patient QR Code
             </Link>
           </div>
@@ -283,6 +328,7 @@ export default function Dashboard() {
       </div>
 
       <ChatWidget />
+      </div>
     </div>
   )
 }

@@ -23,35 +23,37 @@ const defaultForm = {
 // ── Defined OUTSIDE MedicalProfile so React doesn't recreate them each render ──
 
 const Section = ({ title, icon, children }) => (
-  <div className="card mb-6">
-    <h2 className="text-lg font-bold text-primary mb-5 flex items-center gap-2">
-      <span className="text-xl">{icon}</span> {title}
+  <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700/50 rounded-2xl p-6 mb-6 shadow-sm shadow-slate-200/50 dark:shadow-none">
+    <h2 className="text-lg font-black text-slate-900 dark:text-white mb-5 flex items-center gap-3">
+      <span className="text-xl p-2 bg-slate-100 dark:bg-slate-700/50 rounded-xl">{icon}</span> {title}
     </h2>
     <div className="space-y-4">{children}</div>
   </div>
 )
 
 const Field = ({ label, id, onSet, textarea, ...props }) => (
-  <div>
-    <label htmlFor={id} className="label">{label}</label>
+  <div className="space-y-1.5">
+    <label htmlFor={id} className="text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">{label}</label>
     {textarea ? (
-      <textarea id={id} className="input" rows={3} {...props} onChange={e => onSet(id, e.target.value)} />
+      <textarea id={id} className="input w-full bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder-slate-400" rows={3} {...props} onChange={e => onSet(id, e.target.value)} />
     ) : (
-      <input id={id} className="input" {...props} onChange={e => onSet(id, e.target.value)} />
+      <input id={id} className="input w-full bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder-slate-400" {...props} onChange={e => onSet(id, e.target.value)} />
     )}
   </div>
 )
 
 const CheckField = ({ label, field, icon, checked, onSet }) => (
-  <label className={`flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition-all duration-200 ${
-    checked ? 'border-blue-500 bg-blue-500/10' : 'border-slate-700 hover:border-slate-500'
+  <label className={`flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all duration-300 ${
+    checked 
+      ? 'border-blue-500 bg-blue-50 dark:bg-blue-500/10 shadow-lg shadow-blue-500/10 scale-[1.02]' 
+      : 'border-slate-200 dark:border-slate-700/50 bg-white dark:bg-slate-800 hover:border-blue-300 dark:hover:border-blue-500/50'
   }`}>
     <input type="checkbox" className="hidden" checked={checked} onChange={e => onSet(field, e.target.checked)} />
-    <div className={`w-5 h-5 rounded flex items-center justify-center flex-shrink-0 ${checked ? 'bg-blue-500' : 'bg-slate-700'}`}>
-      {checked && <svg className="w-3 h-3 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+    <div className={`w-5 h-5 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors ${checked ? 'bg-blue-600' : 'bg-slate-200 dark:bg-slate-700'}`}>
+      {checked && <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} d="M5 13l4 4L19 7" /></svg>}
     </div>
-    <span className="text-lg">{icon}</span>
-    <span className="text-sm text-primary">{label}</span>
+    <span className="text-xl">{icon}</span>
+    <span className={`text-sm font-bold ${checked ? 'text-blue-600 dark:text-blue-400' : 'text-slate-600 dark:text-slate-300'}`}>{label}</span>
   </label>
 )
 
@@ -119,11 +121,11 @@ export default function MedicalProfile() {
 
 
   return (
-    <div className="min-h-screen pt-24 pb-10 px-4 max-w-3xl mx-auto">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-primary mb-2">Medical Profile</h1>
-        <p className="text-secondary">This information will be shown to responders in an emergency</p>
-      </div>
+    <div className="max-w-4xl mx-auto px-4 py-8 pb-24 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <header>
+        <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">Medical Profile</h1>
+        <p className="text-slate-500 dark:text-slate-400 mt-1">Keep your emergency info up-to-date and accessible.</p>
+      </header>
 
       {/* MediLink ID Card */}
       {form.medilink_id && (
@@ -158,11 +160,9 @@ export default function MedicalProfile() {
 
       {/* Read-Only Banner */}
       {!isEditable && (
-        <div className="bg-blue-50 text-blue-700 rounded-lg p-4 mb-6 text-sm flex items-start gap-3 border border-blue-200">
-          <svg className="w-5 h-5 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-          </svg>
-          <p>Your profile is view-only. To make changes, go to Settings → Edit Profile.</p>
+        <div className="bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 rounded-2xl p-5 mb-6 text-sm flex items-start gap-4 border border-blue-200 dark:border-blue-800/50 shadow-sm shadow-blue-500/5">
+          <InformationCircleIcon className="w-6 h-6 flex-shrink-0 text-blue-500" />
+          <p className="font-bold leading-relaxed">Your profile is view-only. To make changes, go to <Link to="/dashboard/settings" className="underline decoration-2 underline-offset-4 hover:text-blue-600 dark:hover:text-blue-300 transition-colors">Settings</Link> and select "Edit Profile".</p>
         </div>
       )}
 
@@ -172,8 +172,8 @@ export default function MedicalProfile() {
         <Section title="Basic Info" icon="👤">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="label">Blood Group</label>
-              <select id="blood_group" className="input" value={form.blood_group} onChange={e => set('blood_group', e.target.value)}>
+              <label className="text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 block mb-1.5">Blood Group</label>
+              <select id="blood_group" className="input w-full bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white" value={form.blood_group} onChange={e => set('blood_group', e.target.value)}>
                 <option value="">Select blood group</option>
                 {BLOOD_GROUPS.map(bg => <option key={bg} value={bg}>{bg}</option>)}
               </select>

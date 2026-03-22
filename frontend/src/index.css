@@ -1,36 +1,25 @@
 @import "tailwindcss";
 
 :root {
-  --bg-primary: #0A1628;
-  --bg-secondary: #0F1F38;
-  --bg-card: #111D30;
-  --text-primary: #FFFFFF;
-  --text-secondary: #8899BB;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8fafc;
+  --bg-card: #ffffff;
   --accent: #E5341A;
-  --border: rgba(229, 52, 26, 0.2);
-  --navbar-bg: rgba(10, 22, 40, 0.92);
+  --border: rgba(15, 23, 42, 0.1);
+  --navbar-bg: rgba(255, 255, 255, 0.92);
 }
 
-[data-theme="dark"] {
-  --text-primary: #FFFFFF;
-  --text-secondary: #8899BB;
-  --bg-primary: #0A1628;
-  --bg-secondary: #0F1F38;
+.dark {
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --bg-primary: #0f172a;
+  --bg-secondary: #1e293b;
   --bg-card: #111D30;
   --accent: #E5341A;
   --border: rgba(229, 52, 26, 0.2);
-  --navbar-bg: rgba(10, 22, 40, 0.92);
-}
-
-[data-theme="light"] {
-  --text-primary: #0A1628;
-  --text-secondary: #5566AA;
-  --bg-primary: #F4F6FA;
-  --bg-secondary: #FFFFFF;
-  --bg-card: #FFFFFF;
-  --accent: #E5341A;
-  --border: rgba(10, 22, 40, 0.12);
-  --navbar-bg: rgba(244, 246, 250, 0.92);
+  --navbar-bg: rgba(15, 23, 42, 0.92);
 }
 
 * {

@@ -3,7 +3,9 @@ from sqlalchemy.orm import Session
 import urllib.request
 import urllib.parse
 import json
+from typing import List
 from database import get_db
+import models
 from models import QRCode, User, MedicalProfile
 from schemas import EmergencyDataOut
 
@@ -82,6 +84,7 @@ def get_emergency_data(qr_token: str, db: Session = Depends(get_db)):
         emergency_contact_name=profile.emergency_contact_name,
         emergency_contact_phone=profile.emergency_contact_phone,
         emergency_contact_relation=profile.emergency_contact_relation,
+        emergency_contacts=profile.emergency_contacts or [],
         doctor_name=profile.doctor_name,
         doctor_phone=profile.doctor_phone,
         has_pacemaker=profile.has_pacemaker,
@@ -90,4 +93,5 @@ def get_emergency_data(qr_token: str, db: Session = Depends(get_db)):
         is_cardiac_patient=profile.is_cardiac_patient,
         is_epileptic=profile.is_epileptic,
         is_asthmatic=profile.is_asthmatic,
+        prescriptions=db.query(models.Prescription).filter(models.Prescription.user_id == user.id, models.Prescription.is_active == True).all()
     )

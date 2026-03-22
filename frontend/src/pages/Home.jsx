@@ -122,7 +122,7 @@ export default function Home() {
       )}
 
       {/* Hero Section */}
-      <div className="relative overflow-hidden pt-24 pb-20 px-4">
+      <div className="relative overflow-hidden pt-12 pb-20 px-4">
         {/* Background glow */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute -top-40 -right-40 w-96 h-96 bg-blue-600/20 rounded-full blur-3xl" />

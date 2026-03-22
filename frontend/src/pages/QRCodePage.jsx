@@ -55,7 +55,7 @@ export default function QRCodePage() {
   }
 
   return (
-    <div className="min-h-screen pt-24 pb-10 px-4 max-w-2xl mx-auto">
+    <div className="min-h-screen pt-8 pb-10 px-4 max-w-2xl mx-auto">
       <div className="mb-8 text-center">
         <h1 className="text-3xl font-bold text-primary mb-2">My Emergency QR Code</h1>
         <p className="text-secondary">Share this code with first responders for instant access to your medical profile</p>
