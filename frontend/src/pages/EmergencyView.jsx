@@ -19,26 +19,24 @@ export default function EmergencyView() {
   }, [qr_token])
 
   const buildPatientContext = (d) => {
-    const parts = [
-      `Patient: ${d.patient_name}`,
-      d.blood_group && `Blood Group: ${d.blood_group}`,
-      d.date_of_birth && `DOB: ${d.date_of_birth}`,
-      d.allergies && `Allergies: ${d.allergies}`,
-      d.current_medications && `Medications: ${d.current_medications}`,
-      d.chronic_conditions && `Conditions: ${d.chronic_conditions}`,
-      d.is_diabetic && 'IS DIABETIC',
-      d.is_cardiac_patient && 'IS CARDIAC PATIENT',
-      d.is_epileptic && 'IS EPILEPTIC',
-      d.is_asthmatic && 'IS ASTHMATIC',
-      d.has_pacemaker && 'HAS PACEMAKER — AVOID MRI/DEFIBRILLATION',
-      d.has_implants && 'HAS MEDICAL IMPLANTS',
-      d.psychiatric_medications && `Psychiatric Meds: ${d.psychiatric_medications}`,
-      d.surgical_history && `Surgical History: ${d.surgical_history}`,
-      d.emergency_contact_name && `Emergency Contact: ${d.emergency_contact_name} (${d.emergency_contact_relation}) ${d.emergency_contact_phone}`,
-      d.prescriptions?.length > 0 && `Active Prescriptions: ${d.prescriptions.map(p => `${p.drug_name} (${p.dosage}, ${p.frequency})`).join(', ')}`,
-      d.doctor_name && `Primary Doctor: ${d.doctor_name} ${d.doctor_phone}`,
-    ].filter(Boolean)
-    return parts.join('. ')
+    return {
+      name: d.patient_name,
+      blood_type: d.blood_group,
+      age: d.date_of_birth ? (new Date().getFullYear() - parseInt(d.date_of_birth.split('-')[0])) : null,
+      conditions: [
+        d.chronic_conditions,
+        d.is_diabetic && 'Diabetic',
+        d.is_cardiac_patient && 'Cardiac Patient',
+        d.is_epileptic && 'Epileptic',
+        d.is_asthmatic && 'Asthmatic',
+        d.has_pacemaker && 'Has Pacemaker',
+      ].filter(Boolean).flatMap(c => typeof c === 'string' ? c.split(',').map(s => s.trim()) : [c]),
+      medications: [
+        d.current_medications,
+        ...(d.prescriptions || []).map(p => p.drug_name)
+      ].filter(Boolean).flatMap(m => typeof m === 'string' ? m.split(',').map(s => s.trim()) : [m]),
+      allergies: d.allergies ? d.allergies.split(',').map(a => a.trim()) : []
+    };
   }
 
   if (loading) {

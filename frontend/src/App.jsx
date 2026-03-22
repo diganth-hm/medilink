@@ -83,22 +83,17 @@ const NotFound = () => (
 
 export default function App() {
   const [showInitialSplash, setShowInitialSplash] = useState(true);
-  const isDark = document.documentElement.classList.contains('dark');
-
   useEffect(() => {
-    // Keep Render server from sleeping
-    const keepAlive = setInterval(() => {
-      fetch(`${API_URL}/health`)
-        .catch(() => {})
-    }, 4 * 60 * 1000)
-    return () => clearInterval(keepAlive)
-  }, [])
+    const saved = localStorage.getItem('medilink_theme') || 'dark';
+    if (saved === 'dark') document.documentElement.classList.add('dark');
+    else document.documentElement.classList.remove('dark');
+  }, []);
 
   return (
     <AuthProvider>
       <LocationProvider>
         <BrowserRouter>
-        <AnimatedBackground isDark={isDark} />
+        <AnimatedBackground />
         {showInitialSplash && <SplashScreen onComplete={() => setShowInitialSplash(false)} />}
         <SessionTimeout />
         <Navbar />
@@ -106,9 +101,9 @@ export default function App() {
           position="top-right"
           toastOptions={{
             style: {
-              background: '#1e293b',
-              color: '#f1f5f9',
-              border: '1px solid rgba(100,116,139,0.3)',
+              background: 'var(--bg-secondary)',
+              color: 'var(--text-primary)',
+              border: '1px solid var(--border)',
               borderRadius: '12px',
             },
             success: { iconTheme: { primary: '#22c55e', secondary: '#fff' } },

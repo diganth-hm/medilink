@@ -182,7 +182,7 @@ export default function MedicalRecords() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto p-4 sm:p-6 space-y-8 animate-fade-in pt-8">
+    <div className="min-h-screen bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-100 max-w-6xl mx-auto p-4 sm:p-6 space-y-8 animate-fade-in pt-8">
       
       {/* PAGE HEADER */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">

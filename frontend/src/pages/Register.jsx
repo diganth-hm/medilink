@@ -4,6 +4,7 @@ import toast from 'react-hot-toast'
 import axios from 'axios'
 import { useAuth } from '../context/AuthContext'
 import { API_URL } from '../config'
+import SplashScreen from '../components/SplashScreen'
 
 // Custom Countries List
 const COUNTRIES = [
@@ -65,6 +66,7 @@ export default function Register() {
   const [isOtpSuccess, setIsOtpSuccess] = useState(false)
   const [isOtpFailed, setIsOtpFailed] = useState(false)
   const [otpArriving, setOtpArriving] = useState(false)
+  const [showSplash, setShowSplash] = useState(false)
 
   const inputRefs = useRef([null, null, null, null, null, null])
   const maskTimers = useRef([null, null, null, null, null, null])
@@ -315,10 +317,11 @@ export default function Register() {
 
       setIsOtpSuccess(true)
       setTimeout(() => {
-        toast.success('🎉 Welcome to MediLink!')
-        login(res.data.access_token, res.data.user)
-        navigate('/dashboard')
+        setShowSplash(true)
       }, 1000)
+
+      // Store data for navigation after splash
+      window.__register_data = { token: res.data.access_token, user: res.data.user }
 
     } catch (err) {
       setIsOtpFailed(true)
@@ -371,7 +374,19 @@ export default function Register() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 pt-16 pb-10 overflow-hidden relative" onClick={() => setCountryDropdownOpen(false)}>
+    <>
+    {showSplash && (
+      <SplashScreen 
+        onComplete={() => {
+          const { token, user } = window.__register_data;
+          login(token, user);
+          navigate('/dashboard');
+          setShowSplash(false);
+          delete window.__register_data;
+        }} 
+      />
+    )}
+    <div className="min-h-screen flex items-center justify-center px-4 pt-16 pb-10 overflow-hidden relative text-slate-900 dark:text-slate-100" onClick={() => setCountryDropdownOpen(false)}>
       <div className="w-full max-w-md relative z-10 p-6 sm:p-0">
         
         {/* Registration Form View */}
@@ -398,7 +413,7 @@ export default function Register() {
             {/* 2. Separate Email & Phone */}
             <div className="space-y-3 pb-2">
               <div>
-                <label className="block text-sm font-medium text-[var(--text-primary)] mb-1">Email Address</label>
+                <label className="block text-sm font-bold text-slate-900 dark:text-white mb-1">Email Address</label>
                 <input
                   type="email"
                   className="w-full px-4 py-3 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] focus:outline-none focus:border-[#E5341A]"
@@ -409,7 +424,7 @@ export default function Register() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-[var(--text-primary)] mb-1">Phone Number</label>
+                <label className="block text-sm font-bold text-slate-900 dark:text-white mb-1">Phone Number</label>
                 <div className="flex gap-2">
                   <div className="relative">
                     <button 
@@ -468,7 +483,7 @@ export default function Register() {
 
             {/* 3. Password Field & Checklist */}
             <div className="pt-2">
-              <label className="block text-sm font-medium text-[var(--text-primary)] mb-1">Password</label>
+              <label className="block text-sm font-bold text-slate-900 dark:text-white mb-1">Password</label>
               <input
                 type="password"
                 className="w-full px-4 py-3 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] focus:outline-none focus:border-[#E5341A]"
@@ -542,7 +557,7 @@ export default function Register() {
 
             {/* 4. Account Type Carousel */}
             <div className="pt-2 pb-2">
-              <label className="block text-sm font-medium text-[var(--text-primary)] mb-3 text-center">Account Type</label>
+              <label className="block text-sm font-bold text-slate-900 dark:text-white mb-3 text-center">Account Type</label>
               
               <div className="flex items-center justify-center gap-4 w-full">
                 <button
@@ -613,9 +628,9 @@ export default function Register() {
 
         {/* OTP Entry View */}
         <div className={`transition-all duration-500 transform absolute top-0 left-0 right-0 ${step === 'otp' ? 'translate-y-0 opacity-100 scale-100 pointer-events-auto' : 'translate-y-32 opacity-0 scale-95 pointer-events-none'}`}>
-          <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-8 shadow-2xl text-center">
-             <h2 className="text-[20px] font-bold text-[var(--text-primary)] mb-2">Enter Verification Code</h2>
-             <p className="text-[13px] text-[var(--text-secondary)] mb-1">
+          <div className="bg-white dark:bg-slate-800 p-8 rounded-[2.5rem] border border-slate-200 dark:border-slate-700 shadow-2xl text-center">
+             <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Enter Verification Code</h2>
+             <p className="text-sm text-slate-600 dark:text-slate-300 mb-1">
                {maskEmailPhoneText()}
              </p>
              {!email && phone && (
@@ -797,5 +812,6 @@ export default function Register() {
         .animate-otpShake { animation: otpShake 0.5s ease; }
       `}</style>
     </div>
+    </>
   )
 }

@@ -17,6 +17,9 @@ class User(Base):
     medilink_id = Column(String(20), unique=True, nullable=True, index=True)
     is_verified = Column(Boolean, default=False)  # True for verified doctors
     preferences = Column(JSON, nullable=True) # notifications_appointments, notifications_refills, etc.
+    failed_login_attempts = Column(Integer, default=0)
+    locked_until = Column(DateTime, nullable=True)
+    current_qr_token_hash = Column(String(255), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     medical_profile = relationship("MedicalProfile", back_populates="user", uselist=False)
@@ -211,6 +214,21 @@ class FundraisingApplication(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
+class BiometricCredential(Base):
+    __tablename__ = "biometric_credentials"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    credential_id = Column(String(500), unique=True, index=True)
+    public_key = Column(Text)
+    sign_count = Column(Integer, default=0)
+    device_name = Column(String(100), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    last_used = Column(DateTime, nullable=True)
+
+    user = relationship("User", backref="biometric_credentials")
+
+
 class AccessLog(Base):
     __tablename__ = "access_logs"
 
@@ -220,3 +238,14 @@ class AccessLog(Base):
     location = Column(String(255), nullable=True)
 
     user = relationship("User", backref="access_logs")
+
+
+class QRAccessLog(Base):
+    __tablename__ = "qr_access_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    accessed_at = Column(DateTime, default=datetime.utcnow)
+    ip_address = Column(String(100))
+
+    user = relationship("User", backref="qr_access_logs")

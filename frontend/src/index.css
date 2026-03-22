@@ -1,4 +1,59 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+:root {
+  color-scheme: light dark;
+}
+
+/* LIGHT MODE defaults — applied when NO 'dark' class on <html> */
+html {
+  background-color: #f1f5f9;
+  color: #0f172a;
+}
+
+/* DARK MODE — applied when 'dark' class IS on <html> */
+html.dark {
+  background-color: #0f172a;
+  color: #f1f5f9;
+}
+
+body {
+  min-height: 100vh;
+  background-color: inherit;
+  color: inherit;
+}
+
+#root {
+  min-height: 100vh;
+  background-color: inherit;
+}
+
 @import "tailwindcss";
+
+/* Force readable text in both themes on all elements */
+body {
+  color: #0f172a;
+  background-color: #f8fafc;
+}
+
+.dark body {
+  color: #f1f5f9;
+  background-color: #0f172a;
+}
+
+/* Fix any element that still uses hardcoded white text in light mode */
+.dark\:text-white { color: white; }
+
+/* Ensure all headings are readable in light mode */
+h1, h2, h3, h4, h5, h6 {
+  color: inherit;
+}
+
+/* Fix sidebar/navbar text in light mode */
+nav a, nav span, nav p {
+  color: inherit;
+}
 
 :root {
   --text-primary: #0f172a;

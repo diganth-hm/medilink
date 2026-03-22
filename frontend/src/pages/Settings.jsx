@@ -167,7 +167,7 @@ export default function Settings() {
   if (loading) return <div className="p-8 text-center text-slate-500">Loading settings...</div>
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8 pb-24 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="min-h-screen bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-100 max-w-4xl mx-auto px-4 py-8 pb-24 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <header>
         <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">Settings</h1>
         <p className="text-slate-500 dark:text-slate-400 mt-1">Manage your account, privacy, and app experience</p>

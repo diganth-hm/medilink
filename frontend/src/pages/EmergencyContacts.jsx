@@ -118,7 +118,7 @@ export default function EmergencyContacts() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-4 sm:p-6 space-y-10 animate-fade-in">
+    <div className="min-h-screen bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-100 max-w-6xl mx-auto p-4 sm:p-6 space-y-8 animate-fade-in pt-8">
       
       {/* SECTION A: MY EMERGENCY CONTACTS */}
       <section className="space-y-6">

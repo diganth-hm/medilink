@@ -35,15 +35,16 @@ export default function Navbar() {
   }, []);
 
   const toggleTheme = () => {
-    const newTheme = theme === 'dark' ? 'light' : 'dark';
-    setTheme(newTheme);
-    if (newTheme === 'dark') {
-      document.documentElement.classList.add('dark');
+    const html = document.documentElement;
+    if (html.classList.contains('dark')) {
+      html.classList.remove('dark');
+      setTheme('light');
+      localStorage.setItem('medilink_theme', 'light');
     } else {
-      document.documentElement.classList.remove('dark');
+      html.classList.add('dark');
+      setTheme('dark');
+      localStorage.setItem('medilink_theme', 'dark');
     }
-    document.documentElement.setAttribute('data-theme', newTheme);
-    localStorage.setItem('medilink_theme', newTheme);
   };
 
   const handleLogout = () => {

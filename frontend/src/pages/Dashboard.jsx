@@ -105,7 +105,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 pt-8 pb-10 px-4">
+    <div className="min-h-screen bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-100 pt-8 pb-10 px-4 animate-fade-in">
       <div className="max-w-5xl mx-auto">
       {/* Welcome */}
       <div className="mb-10">
@@ -314,7 +314,7 @@ export default function Dashboard() {
       </div>
 
       {/* Responder Tools */}
-      <div className="card bg-gradient-to-br from-red-900/30 to-orange-900/20 border-red-500/20">
+      <div className="card bg-white dark:bg-red-900/20 border border-slate-200 dark:border-red-500/20">
         <div className="flex items-start gap-4">
           <div className="text-4xl">🚨</div>
           <div>
@@ -327,7 +327,27 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <ChatWidget />
+      {/* Chat Widget with Context */}
+      <ChatWidget 
+        patientContext={profile ? {
+          name: user?.name,
+          blood_type: profile.blood_group,
+          age: profile.date_of_birth ? (new Date().getFullYear() - parseInt(profile.date_of_birth.split('-')[0])) : null,
+          conditions: [
+            profile.chronic_conditions,
+            profile.is_diabetic && 'Diabetic',
+            profile.is_cardiac_patient && 'Cardiac Patient',
+            profile.is_epileptic && 'Epileptic',
+            profile.is_asthmatic && 'Asthmatic',
+            profile.has_pacemaker && 'Has Pacemaker',
+          ].filter(Boolean).flatMap(c => typeof c === 'string' ? c.split(',').map(s => s.trim()) : [c]),
+          medications: [
+            profile.current_medications,
+            ...(profile.prescriptions || []).map(p => p.drug_name)
+          ].filter(Boolean).flatMap(m => typeof m === 'string' ? m.split(',').map(s => s.trim()) : [m]),
+          allergies: profile.allergies ? profile.allergies.split(',').map(a => a.trim()) : []
+        } : null}
+      />
       </div>
     </div>
   )

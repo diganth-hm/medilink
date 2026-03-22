@@ -8,6 +8,10 @@ from auth import get_current_user
 import qrcode
 import io
 import uuid
+from jose import jwt
+from datetime import datetime, timedelta
+import hashlib
+from auth import SECRET_KEY, ALGORITHM
 
 router = APIRouter()
 
@@ -16,15 +20,36 @@ BASE_URL = "https://medilink-1hjl.vercel.app"
 
 @router.post("/generate", response_model=QRCodeOut)
 def generate_qr(user_id: int = Depends(get_current_user), db: Session = Depends(get_db)):
-    # Invalidate old QR codes
-    db.query(QRCode).filter(QRCode.user_id == user_id).delete()
+    """
+    Generate a new QR token as a JWT with 24h expiry.
+    Stores the hash in the User record for validation.
+    """
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
 
-    qr_token = str(uuid.uuid4())
+    # 1. Create JWT token
+    exp = datetime.utcnow() + timedelta(hours=24)
+    token_payload = {"sub": str(user_id), "type": "qr", "exp": exp}
+    qr_token = jwt.encode(token_payload, SECRET_KEY, algorithm=ALGORITHM)
+    
+    # 2. Hash it for storage/validation
+    token_hash = hashlib.sha256(qr_token.encode()).hexdigest()
+    user.current_qr_token_hash = token_hash
+    
+    # Still keep a record in qr_codes table for history/compatibility
+    db.query(QRCode).filter(QRCode.user_id == user_id).delete()
     new_qr = QRCode(user_id=user_id, qr_token=qr_token)
     db.add(new_qr)
+    
     db.commit()
     db.refresh(new_qr)
     return new_qr
+
+@router.post("/regenerate", response_model=QRCodeOut)
+def regenerate_qr(user_id: int = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Forces generation of a new QR token, invalidating the old one."""
+    return generate_qr(user_id, db)
 
 
 @router.get("/my-qr")
