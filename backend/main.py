@@ -16,16 +16,16 @@ import logging
 import secrets
 from slowapi.errors import RateLimitExceeded
 from slowapi import _rate_limit_exceeded_handler
-from limiter import limiter
 import string
 from dotenv import load_dotenv
-
 # Ensure the backend directory is in sys.path
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 if BASE_DIR not in sys.path:
     sys.path.append(BASE_DIR)
 
 load_dotenv()
+
+from limiter import limiter
 
 from database import engine, Base, get_db, SessionLocal
 import models
@@ -223,6 +223,8 @@ except (ImportError, AttributeError):
     print("WARNING: records router not found or missing router object, skipping")
 
 try:
+    import string
+    from dotenv import load_dotenv
     from routers import doctor
     app.include_router(doctor.router, prefix="/doctor", tags=["Doctor"])
 except (ImportError, AttributeError):
