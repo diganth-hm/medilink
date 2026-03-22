@@ -29,7 +29,7 @@ load_dotenv()
 
 from database import engine, Base, get_db, SessionLocal
 import models
-from routers import auth, patients, qrcode_routes, emergency, chatbot, records, doctor, fundraising, biometric
+from routers import auth, patients, qrcode_routes, emergency, chatbot
 import schemas
 from auth import hash_password, verify_password, get_current_user, create_access_token
 from schemas import BiometricEnrollment, BiometricLogin, Token, UserOut, HealthRecordOut, AppointmentCreate, AppointmentUpdate, AppointmentOut, PrescriptionCreate, PrescriptionUpdate, PrescriptionOut, PasswordUpdate, UserPreferences, UserDelete, AccessLogOut
@@ -214,10 +214,31 @@ app.include_router(patients.router, prefix="/patient", tags=["Patient"])
 app.include_router(qrcode_routes.router, prefix="/qrcode", tags=["QR Code"])
 app.include_router(emergency.router, prefix="/emergency", tags=["Emergency"])
 app.include_router(chatbot.router, prefix="/chatbot", tags=["Chatbot"])
-app.include_router(records.router, prefix="/records", tags=["Medical Records"])
-app.include_router(doctor.router, prefix="/doctor", tags=["Doctor"])
-app.include_router(fundraising.router, prefix="/fundraising", tags=["Fundraising"])
-app.include_router(biometric.router, prefix="/biometric", tags=["Biometric"])
+
+# Then try importing optional routers safely:
+try:
+    from routers import records
+    app.include_router(records.router, prefix="/records", tags=["Medical Records"])
+except (ImportError, AttributeError):
+    print("WARNING: records router not found or missing router object, skipping")
+
+try:
+    from routers import doctor
+    app.include_router(doctor.router, prefix="/doctor", tags=["Doctor"])
+except (ImportError, AttributeError):
+    print("WARNING: doctor router not found or missing router object, skipping")
+
+try:
+    from routers import fundraising
+    app.include_router(fundraising.router, prefix="/fundraising", tags=["Fundraising"])
+except (ImportError, AttributeError):
+    print("WARNING: fundraising router not found or missing router object, skipping")
+
+try:
+    from routers import biometric
+    app.include_router(biometric.router, prefix="/biometric", tags=["Biometric"])
+except (ImportError, AttributeError):
+    print("WARNING: biometric router not found or missing router object, skipping")
 
 # ── Emergency Contacts Manager ────────────────────────────────────────────────
 @app.get("/emergency-contacts", tags=["Emergency"])
