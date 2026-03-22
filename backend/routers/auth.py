@@ -40,7 +40,7 @@ from sqlalchemy import or_
 
 @router.post("/register", response_model=Token)
 @limiter.limit("3/minute")
-def register(user_data: UserRegister, requestData: Request, db: Session = Depends(get_db)):
+def register(request: Request, user_data: UserRegister, db: Session = Depends(get_db)):
     try:
         # 1. Uniqueness check for email and phone
         filters = []
@@ -102,7 +102,7 @@ def register(user_data: UserRegister, requestData: Request, db: Session = Depend
 
 @router.post("/login")
 @limiter.limit("5/minute")
-def login(user_data: UserLogin, request: Request, db: Session = Depends(get_db)):
+def login(request: Request, user_data: UserLogin, db: Session = Depends(get_db)):
     """Standard email + password login. Now returns otp_required."""
     if user_data.email and user_data.password:
         user = db.query(User).filter(User.email == user_data.email).first()
