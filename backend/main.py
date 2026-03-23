@@ -252,10 +252,12 @@ app.add_middleware(SecurityHeadersMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
+    allow_origin_regex="https://medilink-.*\.vercel\.app",
     allow_origins=[
         "https://medilink-1hjl.vercel.app",
         "http://localhost:3000",
         "http://localhost:5173",
+        "https://medilinkorg.vercel.app",
     ],
     allow_credentials=True,
     allow_methods=["*"],
