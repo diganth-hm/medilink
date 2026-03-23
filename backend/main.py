@@ -218,6 +218,8 @@ async def lifespan(app: FastAPI):
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
+        if request.method == "OPTIONS":
+            return await call_next(request)
         response = await call_next(request)
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "DENY"
@@ -248,21 +250,22 @@ app = FastAPI(
 
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
-app.add_middleware(SecurityHeadersMiddleware)
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origin_regex="https://medilink-.*\.vercel\.app",
     allow_origins=[
         "https://medilink-1hjl.vercel.app",
-        "http://localhost:3000",
+        "https://medilink-1hjl.vercel.app/",
         "http://localhost:5173",
+        "http://localhost:3000",
         "https://medilinkorg.vercel.app",
     ],
+    allow_origin_regex="https://medilink-.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
+app.add_middleware(SecurityHeadersMiddleware)
 
 # ── Core Routers ──────────────────────────────────────────────────────────────
 app.include_router(auth.router, prefix="/auth", tags=["Authentication"])
