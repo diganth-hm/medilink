@@ -89,6 +89,10 @@ def run_migrations():
             "ALTER TABLE users ADD COLUMN mobile_number VARCHAR(20)",
             "ALTER TABLE users ADD COLUMN biometric_template TEXT",
             "ALTER TABLE users ADD COLUMN medilink_id VARCHAR(20)",
+            "ALTER TABLE users ADD COLUMN preferences JSON",
+            "ALTER TABLE users ADD COLUMN failed_login_attempts INTEGER DEFAULT 0",
+            "ALTER TABLE users ADD COLUMN locked_until DATETIME",
+            "ALTER TABLE users ADD COLUMN current_qr_token_hash VARCHAR(255)",
             "ALTER TABLE medical_profiles ADD COLUMN emergency_contacts JSON",
         ]:
             try:
