@@ -250,22 +250,22 @@ app = FastAPI(
 
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+# IMPORTANT: In Starlette, last add_middleware call = outermost = runs FIRST.
+# SecurityHeaders must be FIRST (innermost), CORS must be LAST (outermost).
+app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "https://medilink-1hjl.vercel.app",
-        "https://medilink-1hjl.vercel.app/",
         "http://localhost:5173",
         "http://localhost:3000",
-        "https://medilinkorg.vercel.app",
     ],
-    allow_origin_regex="https://medilink-.*\.vercel\.app",
+    allow_origin_regex=r"https://medilink-.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
     expose_headers=["*"],
 )
-app.add_middleware(SecurityHeadersMiddleware)
 
 # ── Core Routers ──────────────────────────────────────────────────────────────
 app.include_router(auth.router, prefix="/auth", tags=["Authentication"])

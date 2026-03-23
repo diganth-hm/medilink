@@ -8,9 +8,23 @@ services:
     envVars:
       - key: SECRET_KEY
         generateValue: true
+      - key: ENVIRONMENT
+        value: production
       - key: GROQ_API_KEY
         sync: false
       - key: MAIL_USERNAME
         sync: false
       - key: MAIL_PASSWORD
+        sync: false
+      - key: MAIL_FROM
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: TWILIO_SID
+        sync: false
+      - key: TWILIO_TOKEN
+        sync: false
+      - key: TWILIO_FROM
         sync: false
