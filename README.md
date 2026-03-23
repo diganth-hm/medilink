@@ -123,7 +123,8 @@ With the backend running, visit:
 | Asthma attack | Asthma flag, inhaler info |
 | Psychiatric crisis | Psychiatric medications, contacts |
 | Surgical emergency | Surgical history, implants, blood group |
-| Pediatric emergency | DOB to calculate age, vaccination records |
+|- [ ] pediatric emergency
+[//]: # (Manual deployment trigger: 2026-03-23 20:45) | DOB to calculate age, vaccination records |
 | Poisoning / overdose | Full medication list for toxicology |
 
 ---
