@@ -204,9 +204,7 @@ async def lifespan(app: FastAPI):
         required = ["SMTP_USER", "SMTP_PASS", "TWILIO_SID", "TWILIO_TOKEN", "TWILIO_FROM"]
         missing = [k for k in required if not os.getenv(k)]
         if missing:
-            logger.warning(f"CRITICAL: Missing environment variables for OTP services: {missing}")
-            if os.getenv("ENVIRONMENT", "development").lower() == "production":
-                raise RuntimeError(f"Missing required production env vars: {missing}")
+            logger.warning(f"[STARTUP] Missing optional OTP service env vars: {missing}. SMS/SMTP may not work.")
 
         Base.metadata.create_all(bind=engine)
         run_migrations()
