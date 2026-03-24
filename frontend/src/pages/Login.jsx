@@ -25,6 +25,8 @@ export default function Login() {
   const [countryDropdownOpen, setCountryDropdownOpen] = useState(false)
   const [countrySearch, setCountrySearch] = useState('')
   const [rememberMe, setRememberMe] = useState(false)
+  const [isPasswordFlow, setIsPasswordFlow] = useState(false)
+  const [passwordValue, setPasswordValue] = useState('')
 
   const [loading, setLoading] = useState(false)
   
@@ -32,7 +34,7 @@ export default function Login() {
   const [step, setStep] = useState('form') // 'form' | 'otp'
   const [boxValues, setBoxValues] = useState(['', '', '', '', '', ''])
   const [boxMasked, setBoxMasked] = useState([false, false, false, false, false, false])
-  const [countdown, setCountdown] = useState(60)
+  const [countdown, setCountdown] = useState(30)
   const [isOtpSuccess, setIsOtpSuccess] = useState(false)
   const [isOtpFailed, setIsOtpFailed] = useState(false)
   const [otpArriving, setOtpArriving] = useState(false)
@@ -102,7 +104,7 @@ export default function Login() {
     // Optimistic Transition (ISSUE 1)
     setStep('otp')
     setOtpArriving(true)
-    setCountdown(60)
+    setCountdown(30)
     setBoxValues(['', '', '', '', '', ''])
     setBoxMasked([false, false, false, false, false, false])
     setLoading(true)
@@ -135,6 +137,47 @@ export default function Login() {
       setOtpArriving(false)
       clearTimeout(arriverTimer)
       toast.error(err.response?.data?.detail || err.message || 'Failed to send OTP')
+      setLoading(false)
+    }
+  }
+
+  const handlePasswordSubmit = async (e) => {
+    if (e) e.preventDefault()
+    if (loginMethod === 'email' && !emailValue.trim()) return toast.error('Please enter your email')
+    if (loginMethod === 'phone' && !phoneNumber.trim()) return toast.error('Please enter your phone number')
+    if (!passwordValue) return toast.error('Please enter your password')
+
+    setLoading(true)
+    try {
+      const loginData = {}
+      if (loginMethod === 'email') {
+        loginData.email = emailValue.trim().toLowerCase()
+      } else {
+        loginData.mobile_number = "+" + countryCode.replace(/\D/g, '') + phoneNumber
+      }
+      loginData.password = passwordValue
+
+      const baseUrl = import.meta.env.VITE_API_URL || API_URL
+      const response = await axios.post(
+        `${baseUrl}/auth/login`,
+        loginData
+      )
+
+      if (response.data?.access_token) {
+        setShowSplash(true)
+        window.__login_data = { 
+          token: {
+            access_token: response.data.access_token,
+            refresh_token: response.data.refresh_token
+          }, 
+          user: response.data.user 
+        }
+      } else {
+        throw new Error('Invalid response from server')
+      }
+    } catch (err) {
+      console.error(err)
+      toast.error(err.response?.data?.detail || err.message || 'Login failed')
       setLoading(false)
     }
   }
@@ -283,7 +326,7 @@ export default function Login() {
       toast.success('OTP resent successfully')
       setOtpArriving(true)
       setTimeout(() => setOtpArriving(false), 10000)
-      setCountdown(60)
+      setCountdown(30)
     } catch (err) {
       toast.error('Failed to resend OTP')
     } finally {
@@ -431,17 +474,66 @@ export default function Login() {
             </div>
 
             <p style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-              OTP will be sent to your registered contact
+              {isPasswordFlow ? 'Enter your password to sign in securely' : 'OTP will be sent to your registered contact'}
             </p>
 
-            <button type="submit" disabled={loading} className="w-full py-4 bg-[#E5341A] text-white font-bold rounded-xl transition-colors hover:bg-red-600 disabled:opacity-50 flex items-center justify-center gap-2 mt-2">
-              {loading ? (
-                <>
-                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  Sending...
-                </>
-              ) : 'Continue'}
-            </button>
+            {/* PASSWORD INPUT IF IN PASSWORD FLOW */}
+            {isPasswordFlow && (
+              <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                <input
+                  type="password"
+                  className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl text-slate-900 dark:text-white font-medium focus:outline-none focus:ring-2 focus:ring-red-500/50 transition-all placeholder-slate-400"
+                  placeholder="Enter your password"
+                  value={passwordValue}
+                  onChange={e => setPasswordValue(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handlePasswordSubmit()}
+                />
+              </div>
+            )}
+
+            {!isPasswordFlow ? (
+              <>
+                <button type="button" onClick={handleSubmit} disabled={loading} className="w-full py-4 bg-[#E5341A] text-white font-bold rounded-xl transition-colors hover:bg-red-600 disabled:opacity-50 flex items-center justify-center gap-2 mt-2">
+                  {loading ? (
+                    <>
+                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Sending...
+                    </>
+                  ) : 'Continue with OTP'}
+                </button>
+                <div className="flex justify-center mt-4">
+                  <button 
+                    type="button" 
+                    onClick={() => setIsPasswordFlow(true)} 
+                    disabled={loading} 
+                    className="text-sm font-semibold text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 transition-colors flex items-center gap-1 bg-transparent border-none p-0 cursor-pointer"
+                  >
+                    Continue with Password <span className="text-lg leading-none mt-[2px]">&gt;</span>
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <button type="button" onClick={handlePasswordSubmit} disabled={loading} className="w-full py-4 bg-[#E5341A] text-white font-bold rounded-xl transition-colors hover:bg-red-600 disabled:opacity-50 flex items-center justify-center gap-2 mt-2">
+                  {loading ? (
+                    <>
+                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Authenticating...
+                    </>
+                  ) : 'Login with Password'}
+                </button>
+                <div className="flex justify-center mt-4">
+                  <button 
+                    type="button" 
+                    onClick={() => setIsPasswordFlow(false)} 
+                    disabled={loading} 
+                    className="text-sm font-semibold text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 transition-colors flex items-center gap-1 bg-transparent border-none p-0 cursor-pointer"
+                  >
+                    Use OTP Instead <span className="text-lg leading-none mt-[2px]">&gt;</span>
+                  </button>
+                </div>
+              </>
+            )}
           </form>
 
           {/* Quick Demo REMOVED (Feature 3) */}
@@ -562,6 +654,10 @@ export default function Login() {
                     Resend OTP
                   </button>
                 )}
+             </div>
+             
+             <div className="mt-4 text-[13px] text-[var(--text-secondary)]">
+                OTP not received? <button onClick={() => { setStep('form'); setIsPasswordFlow(true); }} className="text-[#E5341A] hover:underline bg-transparent border-none cursor-pointer p-0 font-medium">Try password login</button>
              </div>
 
              <button 

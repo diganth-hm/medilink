@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 import urllib.request
 import urllib.parse
@@ -8,7 +8,6 @@ from database import get_db
 import models
 from models import QRCode, User, MedicalProfile
 from schemas import EmergencyDataOut
-from fastapi import Request
 from jose import jwt, JWTError
 import hashlib
 from auth import SECRET_KEY, ALGORITHM

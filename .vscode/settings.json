@@ -2,5 +2,6 @@
     "python.defaultInterpreterPath": "C:\\medilink\\backend\\medilink_venv\\Scripts\\python.exe",
     "python.analysis.extraPaths": [
         "C:\\medilink\\backend"
-    ]
+    ],
+    "css.lint.unknownAtRules": "ignore"
 }

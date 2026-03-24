@@ -30,6 +30,7 @@ body {
 }
 
 @import "tailwindcss";
+@custom-variant dark (&:is(.dark *));
 
 /* Force readable text in both themes on all elements */
 body {
@@ -41,9 +42,6 @@ body {
   color: #f1f5f9;
   background-color: #0f172a;
 }
-
-/* Fix any element that still uses hardcoded white text in light mode */
-.dark\:text-white { color: white; }
 
 /* Ensure all headings are readable in light mode */
 h1, h2, h3, h4, h5, h6 {
@@ -93,11 +91,6 @@ body {
 h1, h2, h3, h4, h5, h6, .logo-wordmark {
   font-family: 'Space Grotesk', sans-serif;
   font-weight: 700;
-  color: var(--text-primary);
-}
-
-p, span, li, a {
-  color: var(--text-primary);
 }
 
 .text-secondary, .muted, .caption, footer {

@@ -100,12 +100,15 @@ def register(request: Request, user_data: UserRegister, db: Session = Depends(ge
         )
 
 
-@router.post("/login")
+@router.post("/login", response_model=Token)
 @limiter.limit("5/minute")
 def login(request: Request, user_data: UserLogin, db: Session = Depends(get_db)):
-    """Standard email + password login. Now returns otp_required."""
-    if user_data.email and user_data.password:
-        user = db.query(User).filter(User.email == user_data.email).first()
+    """Standard email/phone + password login."""
+    identifier = user_data.email or user_data.mobile_number
+    if identifier and user_data.password:
+        user = db.query(User).filter(
+            (User.email == identifier) | (User.mobile_number == identifier)
+        ).first()
         
         # Lockout check
         if user and user.locked_until:
@@ -122,10 +125,10 @@ def login(request: Request, user_data: UserLogin, db: Session = Depends(get_db))
                     user.locked_until = datetime.utcnow() + timedelta(minutes=15)
                 db.commit()
             
-            logger.warning("[AUTH] Failed password login for: %s", user_data.email)
+            logger.warning("[AUTH] Failed password login for: %s", identifier)
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid email or password",
+                detail="Invalid credentials",
             )
             
         # Success - reset attempts
@@ -133,12 +136,20 @@ def login(request: Request, user_data: UserLogin, db: Session = Depends(get_db))
         user.locked_until = None
         db.commit()
         
-        logger.info("[AUTH] Password matched for: %s, requiring OTP", user_data.email)
-        return {"status": "otp_required", "identifier": user.email}
+        logger.info("[AUTH] Password matched for: %s", identifier)
+        
+        access_token = create_access_token(data={"sub": str(user.id)})
+        refresh_token = create_refresh_token(data={"sub": str(user.id)})
+        return Token(
+            access_token=access_token,
+            refresh_token=refresh_token,
+            token_type="bearer",
+            user=UserOut.model_validate(user)
+        )
     else:
         raise HTTPException(
             status_code=400,
-            detail="Please provide email and password. For OTP login use /send-otp and /verify-otp."
+            detail="Please provide email/phone and password."
         )
 
 
@@ -150,55 +161,66 @@ async def send_otp_route(request: SendOTPRequest, background_tasks: BackgroundTa
     """
     print(f"[DEBUG] send-otp called with data: {request}")
     
-    identifier = request.email or request.phone
-    if not identifier:
-        raise HTTPException(status_code=400, detail="Must provide email or phone")
-    
-    identifier = str(identifier).strip().lower()
+    try:
+        identifier = request.email or request.phone
+        if not identifier:
+            raise HTTPException(status_code=400, detail="Must provide email or phone")
+        
+        identifier = str(identifier).strip().lower()
 
-    # Generate ONE code
-    otp_code = generate_otp()
-    
-    # Resolve user context if available (for the email template name)
-    user = db.query(User).filter(
-        (User.email == identifier) | (User.mobile_number == identifier)
-    ).first()
-    user_name = request.name or (user.name if user else "User")
+        # Generate ONE code
+        otp_code = generate_otp()
+        
+        # Required DEBUG LOGS
+        print(f"OTP: {otp_code}")
+        print(f"Sending to: {identifier}")
+        
+        # Resolve user context if available (for the email template name)
+        user = db.query(User).filter(
+            (User.email == identifier) | (User.mobile_number == identifier)
+        ).first()
+        user_name = request.name or (user.name if user else "User")
 
-    # Cleanup old ones
-    db.query(OTPToken).filter(OTPToken.identifier == identifier).delete()
-    db.commit()
+        # Cleanup old ones
+        db.query(OTPToken).filter(OTPToken.identifier == identifier).delete()
+        db.commit()
 
-    # Save to DB
-    expiry_min = OTP_EXPIRY_MINUTES
-    new_otp = OTPToken(
-        identifier=identifier,
-        otp_code=hash_otp(otp_code),
-        channel="both" if (request.email and request.phone) else ("email" if request.email else "sms"),
-        expires_at=datetime.utcnow() + timedelta(minutes=expiry_min),
-        used=False,
-        attempts=0
-    )
-    db.add(new_otp)
-    db.commit()
+        # Save to DB
+        expiry_min = OTP_EXPIRY_MINUTES
+        new_otp = OTPToken(
+            identifier=identifier,
+            otp_code=hash_otp(otp_code),
+            channel="both" if (request.email and request.phone) else ("email" if request.email else "sms"),
+            expires_at=datetime.utcnow() + timedelta(minutes=expiry_min),
+            used=False,
+            attempts=0
+        )
+        db.add(new_otp)
+        db.commit()
 
-    # Queue background tasks
-    if request.email:
-        background_tasks.add_task(send_otp_email, request.email, otp_code, user_name)
-        logger.info("[AUTH] Queued email OTP task for %s", request.email)
-    
-    if request.phone:
-        background_tasks.add_task(send_otp_sms, request.phone, otp_code)
-        logger.info("[AUTH] Queued SMS OTP task for %s", request.phone)
+        # Queue background tasks
+        if request.email:
+            background_tasks.add_task(send_otp_email, request.email, otp_code, user_name)
+            logger.info("[AUTH] Queued email OTP task for %s", request.email)
+        
+        if request.phone:
+            background_tasks.add_task(send_otp_sms, request.phone, otp_code)
+            logger.info("[AUTH] Queued SMS OTP task for %s", request.phone)
 
-    if os.getenv("ENVIRONMENT") != "production":
-        print(f"\n[DEV MODE] DEV OTP for {identifier}: {otp_code}\n")
+        if os.getenv("ENVIRONMENT") != "production":
+            print(f"\n[DEV MODE] DEV OTP for {identifier}: {otp_code}\n")
 
-    return {
-        "success": True,
-        "message": "OTP is being sent.",
-        "expires_in_seconds": expiry_min * 60,
-    }
+        return {
+            "success": True,
+            "message": "OTP is being sent.",
+            "expires_in_seconds": expiry_min * 60,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"OTP ERROR: {e}")
+        logger.error(f"OTP ERROR: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/login/send-otp")
 async def login_send_otp_route(request: OTPLoginRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):

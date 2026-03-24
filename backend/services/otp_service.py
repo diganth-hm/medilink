@@ -19,7 +19,7 @@ from models import OTPToken
 
 logger = logging.getLogger("medilink.otp")
 
-OTP_EXPIRY_MINUTES = int(os.getenv("OTP_EXPIRY_MINUTES", "15"))
+OTP_EXPIRY_MINUTES = int(os.getenv("OTP_EXPIRY_MINUTES", "5"))
 MAX_ATTEMPTS = 5
 
 _pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -34,8 +34,8 @@ def _verify_otp_hash(plain: str, hashed: str) -> bool:
 
 
 def generate_otp(length: int = 6) -> str:
-    """Generate a cryptographically random numeric OTP."""
-    return "".join(random.choices(string.digits, k=length))
+    """Generate a cryptographically random numeric OTP matching JS random generator pattern."""
+    return str(random.randint(100000, 999999))
 
 
 def create_otp(db: Session, identifier: str, channel: str) -> str:

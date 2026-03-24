@@ -111,7 +111,7 @@ export default function App() {
             error: { iconTheme: { primary: '#ef4444', secondary: '#fff' } },
           }}
         />
-        <div className="min-h-screen flex flex-col relative z-20 pt-16 bg-slate-50 dark:bg-slate-900 transition-colors duration-300">
+        <div className="min-h-screen flex flex-col relative z-20 pt-16 transition-colors duration-300">
           <div className="flex-1 pb-16">
           <Routes>
           {/* Public routes */}
